@@ -1,0 +1,32 @@
+{
+  "context": "ctx-66225e73",
+  "count": 1,
+  "virtualmachine": [
+    {
+      "id": "9a140a96-b304-4512-8114-f33cfd6a875c",
+      "created": "2017-07-31T10:54:59-0300",
+      "displayname": "vm_name",
+      "nic": [
+        {
+          "broadcasturi": "vlan://173",
+          "gateway": "10.170.3.177",
+          "id": "b6919eea-53cb-474b-9506-ab59565e9c63",
+          "ipaddress": "10.170.3.180",
+          "isdefault": true,
+          "isolationuri": "vlan://173",
+          "macaddress": "06:7a:9a:00:3b:8b",
+          "netmask": "255.255.255.240",
+          "networkid": "e5ff7af0-1925-4285-9b25-3b288add616c",
+          "networkname": "TESTE-REDE-BE",
+          "traffictype": "Guest",
+          "type": "Shared"
+        }
+      ],
+      "project": "project_name",
+      "projectid": "1",
+      "serviceofferingname": "e2.micro",
+      "templatename": "RedHat 7 OFICIAL",
+      "zonename": "zone_name"
+    }
+  ]
+}

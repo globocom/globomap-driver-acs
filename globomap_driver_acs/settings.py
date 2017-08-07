@@ -1,0 +1,11 @@
+import os
+
+ACS_API_URL = os.getenv('ACS_API_URL')
+ACS_API_KEY = os.getenv('ACS_API_KEY')
+ACS_API_SECRET_KEY = os.getenv('ACS_API_SECRET_KEY')
+ACS_RMQ_USER = os.getenv('ACS_RMQ_USER')
+ACS_RMQ_PASSWORD = os.getenv('ACS_RMQ_PASSWORD')
+ACS_RMQ_HOST = os.getenv('ACS_RMQ_HOST')
+ACS_RMQ_PORT = int(os.getenv('ACS_RMQ_PORT', 5672))
+ACS_RMQ_QUEUE = os.getenv('ACS_RMQ_QUEUE')
+ACS_RMQ_VIRTUAL_HOST = os.getenv('ACS_RMQ_VIRTUAL_HOST')
