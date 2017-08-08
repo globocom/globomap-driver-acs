@@ -98,8 +98,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client(None)
         self._mock_cloudstack_service(None, None)
 
-        with self.assertRaises(StopIteration):
-            next(Cloudstack().updates())
+        self.assertEquals([], Cloudstack().updates())
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()

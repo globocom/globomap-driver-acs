@@ -24,7 +24,10 @@ class Cloudstack(object):
 
     def updates(self, number_messages=1):
         """Return list of updates"""
-        return self._get_update(number_messages).next()
+        try:
+            return self._get_update(number_messages).next()
+        except StopIteration:
+            return []
 
     def _get_update(self, number_messages=1):
         messages = []
