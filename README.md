@@ -2,7 +2,7 @@
 Python library for globomap-loader to get data from Cloudstack
 
 ## Plugin environment variables configuration
-All of the environment variables below must be set for the plugin to function properly.
+All of the environment variables below must be set for the plugin to work properly.
 
 | Variable                  |  Description                    | Example                                      |
 |---------------------------|---------------------------------|----------------------------------------------|
@@ -12,6 +12,6 @@ All of the environment variables below must be set for the plugin to function pr
 | ACS_RMQ_HOST              | Cloudstack RabbitMQ host        | rabbitmq.yourdomain.cloudstack               |
 | ACS_RMQ_USER              | Cloudstack RabbitMQ user        | user-name                                    |
 | ACS_RMQ_PASSWORD          | Cloudstack RabbitMQ password    | password                                     |
-| ACS_RMQ_PORT				| Cloudstack RabbitMQ port        | 5672 (default value)                         |
+| ACS_RMQ_PORT              | Cloudstack RabbitMQ port        | 5673 (default value)                         |
 | ACS_RMQ_QUEUE		        | Cloudstack RabbitMQ queue name  | events                                       |
 | ACS_RMQ_VIRTUAL_HOST      | Cloudstack RabbitMQ virtual host| /globomap                                    |
