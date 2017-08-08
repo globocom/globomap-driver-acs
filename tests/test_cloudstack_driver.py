@@ -83,7 +83,7 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/project.json')['project'][0]
         )
         driver = Cloudstack()
-        updates = next(driver.updates())
+        updates = driver.updates()
         update = updates[0]
 
         self.assertIsNotNone(updates)
