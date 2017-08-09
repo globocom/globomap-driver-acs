@@ -80,6 +80,7 @@ class Cloudstack(object):
                 "id": virtual_machine["displayname"],
                 "name": virtual_machine["displayname"],
                 "timestamp": self._get_event_time(msg["eventDateTime"]),
+                "provider": "globomap",
                 "properties": [
                     {
                         "key": "uuid",
