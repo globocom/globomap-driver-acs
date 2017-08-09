@@ -79,7 +79,7 @@ class Cloudstack(object):
             element = {
                 "id": virtual_machine["displayname"],
                 "name": virtual_machine["displayname"],
-                "timestamp": self._get_event_time(msg["eventDateTime"]),
+                "timestamp": self._get_event_time(virtual_machine["created"]),
                 "provider": "globomap",
                 "properties": [
                     {
