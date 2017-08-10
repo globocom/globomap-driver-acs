@@ -3,23 +3,23 @@ import time
 from dateutil.parser import parse
 from cloudstack import CloudStackClient, CloudstackService
 from rabbitmq import RabbitMQClient
-from settings import ACS_RMQ_USER, ACS_RMQ_PASSWORD, \
-    ACS_RMQ_HOST, ACS_RMQ_PORT, ACS_RMQ_QUEUE, \
-    ACS_RMQ_VIRTUAL_HOST, ACS_API_URL, ACS_API_KEY, ACS_API_SECRET_KEY
+from settings import get_setting
 
 
 class Cloudstack(object):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self):
+    def __init__(self, params):
+        self.env = params.get('env')
+
         self.rabbitmq = RabbitMQClient(
-            host=ACS_RMQ_HOST,
-            port=ACS_RMQ_PORT,
-            user=ACS_RMQ_USER,
-            password=ACS_RMQ_PASSWORD,
-            vhost=ACS_RMQ_VIRTUAL_HOST,
-            queue_name=ACS_RMQ_QUEUE
+            host=self._get_setting("RMQ_HOST"),
+            port=int(self._get_setting("RMQ_PORT", 5672)),
+            user=self._get_setting("RMQ_USER"),
+            password=self._get_setting("RMQ_PASSWORD"),
+            vhost=self._get_setting("RMQ_VIRTUAL_HOST"),
+            queue_name=self._get_setting("RMQ_QUEUE")
         )
 
     def updates(self, number_messages=1):
@@ -116,7 +116,11 @@ class Cloudstack(object):
 
     def _get_cloudstack_service(self):
         acs_client = CloudStackClient(
-            ACS_API_URL, ACS_API_KEY,
-            ACS_API_SECRET_KEY, True
+             self._get_setting("API_URL"),
+             self._get_setting("API_KEY"),
+             self._get_setting("API_SECRET_KEY"), True
         )
         return CloudstackService(acs_client)
+
+    def _get_setting(self, key, default=None):
+        return get_setting(self.env, key, default)

@@ -15,8 +15,7 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        driver = Cloudstack()
-        vm = driver._get_virtual_machine_data(
+        vm = self._create_driver()._get_virtual_machine_data(
             'uuid', open_json('tests/json/vm_create_event.json')
         )
 
@@ -32,8 +31,7 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_get_virtual_machine_expected_not_found(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        driver = Cloudstack()
-        vm = driver._get_virtual_machine_data(
+        vm = self._create_driver()._get_virtual_machine_data(
             'uuid', open_json('tests/json/vm_create_event.json')
         )
 
@@ -47,8 +45,7 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        driver = Cloudstack()
-        update = driver._format_update(open_json('tests/json/vm_create_event.json'))
+        update = self._create_driver()._format_update(open_json('tests/json/vm_create_event.json'))
 
         self.assertIsNotNone(update)
         self.assertEquals("CREATE", update["action"])
@@ -60,8 +57,7 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_format_update_given_no_vm_found(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        driver = Cloudstack()
-        update = driver._format_update(open_json('tests/json/vm_create_event.json'))
+        update = self._create_driver()._format_update(open_json('tests/json/vm_create_event.json'))
 
         self.assertIsNone(update)
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
@@ -70,8 +66,7 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_format_update_given_event_not_completed(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        driver = Cloudstack()
-        update = driver._format_update(open_json('tests/json/vm_create_scheduled_event.json'))
+        update = self._create_driver()._format_update(open_json('tests/json/vm_create_scheduled_event.json'))
 
         self.assertIsNone(update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
@@ -83,8 +78,7 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        driver = Cloudstack()
-        updates = driver.updates()
+        updates = self._create_driver().updates()
         update = updates[0]
 
         self.assertIsNotNone(updates)
@@ -98,8 +92,7 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_get_updates_no_messages_found(self):
         self._mock_rabbitmq_client(None)
         self._mock_cloudstack_service(None, None)
-
-        self.assertEquals([], Cloudstack().updates())
+        self.assertEquals([], self._create_driver().updates())
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()
@@ -119,3 +112,6 @@ class TestCloudstackDriver(unittest.TestCase):
         acs_service_mock.get_project.return_value = project
         return acs_service_mock
 
+    def _create_driver(self):
+        driver = Cloudstack({'env': 'ENV'})
+        return driver
