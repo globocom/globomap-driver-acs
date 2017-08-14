@@ -61,10 +61,11 @@ class Cloudstack(object):
             if not vm:
                 return
             update = {
-                "action": "CREATE",
+                "action": "PATCH",
                 "collection": "comp_unit",
                 "type": "collections",
-                "element": vm
+                "element": vm,
+                "key": "globomap_%s" % vm['id']
             }
             return update
 

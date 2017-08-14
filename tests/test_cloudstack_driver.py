@@ -48,9 +48,10 @@ class TestCloudstackDriver(unittest.TestCase):
         update = self._create_driver()._format_update(open_json('tests/json/vm_create_event.json'))
 
         self.assertIsNotNone(update)
-        self.assertEquals("CREATE", update["action"])
+        self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
+        self.assertEquals("globomap_vm_name", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
@@ -83,9 +84,10 @@ class TestCloudstackDriver(unittest.TestCase):
 
         self.assertIsNotNone(updates)
         self.assertEqual(1, len(updates))
-        self.assertEquals("CREATE", update["action"])
+        self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
+        self.assertEquals("globomap_vm_name", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
