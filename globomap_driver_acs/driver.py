@@ -85,23 +85,35 @@ class Cloudstack(object):
                 "properties": [
                     {
                         "key": "uuid",
-                        "value": virtual_machine["id"]
+                        "value": virtual_machine.get("id", "")
                     },
                     {
                         "key": "zone",
-                        "value": virtual_machine["zonename"]
+                        "value": virtual_machine.get("zonename", "")
                     },
                     {
                         "key": "service_offering",
-                        "value": virtual_machine["serviceofferingname"]
+                        "value": virtual_machine.get("serviceofferingname", "")
+                    },
+                    {
+                        "key": "cpu_cores",
+                        "value": virtual_machine.get("cpunumber", "")
+                    },
+                    {
+                        "key": "cpu_speed",
+                        "value": virtual_machine.get("cpuspeed", "")
+                    },
+                    {
+                        "key": "memory",
+                        "value": virtual_machine.get("memory", "")
                     },
                     {
                         "key": "template",
-                        "value": virtual_machine["templatename"]
+                        "value": virtual_machine.get("templatename", "")
                     },
                     {
                         "key": "project",
-                        "value": virtual_machine["project"]
+                        "value": virtual_machine.get("project", "")
                     },
                     {
                         "key": "account",
