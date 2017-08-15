@@ -15,9 +15,7 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        vm = self._create_driver()._get_virtual_machine_data(
-            'uuid', open_json('tests/json/vm_create_event.json')
-        )
+        vm = self._create_driver()._get_virtual_machine_data('uuid')
 
         self.assertIsNotNone(vm)
         self.assertEquals("vm_name", vm["id"])
@@ -31,9 +29,7 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_get_virtual_machine_expected_not_found(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        vm = self._create_driver()._get_virtual_machine_data(
-            'uuid', open_json('tests/json/vm_create_event.json')
-        )
+        vm = self._create_driver()._get_virtual_machine_data('uuid')
 
         self.assertIsNone(vm)
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)

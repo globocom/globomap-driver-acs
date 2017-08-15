@@ -14,6 +14,7 @@ class RabbitMQClient(object):
         self.queue_name = queue_name
         self.connection = pika.BlockingConnection(parameters)
         self.channel = self.connection.channel()
+        self.channel.confirm_delivery()
 
     def read_messages(self, number_messages=1):
         messages = []
@@ -44,8 +45,10 @@ class RabbitMQClient(object):
             else:
                 break
 
-    def close(self):
-        if not self.channel.is_closed:
-            self.channel.close()
-        if not self.connection.is_closed:
-            self.connection.close()
+    def post_message(self, exchange_name, key, message):
+        return self.channel.basic_publish(
+            exchange=exchange_name,
+            routing_key=key,
+            body=message,
+            mandatory=True,
+        )

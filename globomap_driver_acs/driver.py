@@ -57,7 +57,7 @@ class Cloudstack(object):
         event_completed = msg["status"] == "Completed"
 
         if event_completed and create_event:
-            vm = self._get_virtual_machine_data(msg["entityuuid"], msg)
+            vm = self._get_virtual_machine_data(msg["entityuuid"])
             if not vm:
                 return
             update = {
@@ -69,7 +69,7 @@ class Cloudstack(object):
             }
             return update
 
-    def _get_virtual_machine_data(self, id, msg):
+    def _get_virtual_machine_data(self, id):
         cloudstack_service = self._get_cloudstack_service()
         virtual_machine = cloudstack_service.get_virtual_machine(id)
         if virtual_machine:
