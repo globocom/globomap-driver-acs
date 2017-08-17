@@ -18,7 +18,7 @@ class TestCloudstackDriver(unittest.TestCase):
         vm = self._create_driver()._get_virtual_machine_data('uuid')
 
         self.assertIsNotNone(vm)
-        self.assertEquals("vm_name", vm["id"])
+        self.assertEquals("vm-9a140a96-b304-4512-8114-f33cfd6a875c", vm["id"])
         self.assertEquals("vm_name", vm["name"])
         self.assertEquals("globomap", vm["provider"])
         self.assertIsNotNone(vm["timestamp"])
@@ -47,7 +47,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm_name", update["key"])
+        self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
@@ -83,7 +83,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm_name", update["key"])
+        self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 

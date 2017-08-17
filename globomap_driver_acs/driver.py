@@ -78,7 +78,7 @@ class Cloudstack(object):
             )
             account = project['account']
             element = {
-                "id": virtual_machine["displayname"],
+                "id": "vm-%s" % virtual_machine["id"],
                 "name": virtual_machine["displayname"],
                 "timestamp": self._get_event_time(virtual_machine["created"]),
                 "provider": "globomap",
