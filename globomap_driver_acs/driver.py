@@ -33,11 +33,11 @@ class Cloudstack(object):
         messages = []
         while True:
             update = None
+            message = None
             try:
                 message = self.rabbitmq.get_message()
                 if message:
                     update = self._format_update(message)
-
             except StopIteration:
                 if messages:
                     yield messages
@@ -49,7 +49,7 @@ class Cloudstack(object):
                     yield messages
                     messages = []
 
-                if not update:
+                if not message:
                     break
 
     def _format_update(self, msg):
@@ -79,7 +79,7 @@ class Cloudstack(object):
             account = project['account']
             element = {
                 "id": "vm-%s" % virtual_machine["id"],
-                "name": virtual_machine["displayname"],
+                "name": virtual_machine["name"],
                 "timestamp": self._get_event_time(virtual_machine["created"]),
                 "provider": "globomap",
                 "properties": [
@@ -118,6 +118,10 @@ class Cloudstack(object):
                     {
                         "key": "account",
                         "value": account
+                    },
+                    {
+                        "key": "environment",
+                        "value": self.env
                     }
                 ]
             }

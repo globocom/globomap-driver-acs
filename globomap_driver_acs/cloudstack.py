@@ -130,7 +130,7 @@ class CloudstackService(object):
     def get_virtual_machine(self, id):
         virtual_machines = self.cloudstack_client.\
             listVirtualMachines({'id': id, 'listall': 'true'})
-        if virtual_machines['count'] == 1:
+        if virtual_machines.get('count') == 1:
             return virtual_machines['virtualmachine'][0]
 
     def list_virtual_machines_by_project(self, project_id):
@@ -143,7 +143,7 @@ class CloudstackService(object):
     def get_project(self, id):
         projects = self.cloudstack_client.\
             listProjects({'id': id, 'listall': 'true'})
-        if projects['count'] == 1:
+        if projects.get('count') == 1:
             return projects['project'][0]
 
     def list_projects(self):
