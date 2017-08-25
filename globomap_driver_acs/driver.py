@@ -1,6 +1,7 @@
 import logging
 import time
 from dateutil.parser import parse
+from pika.exceptions import ConnectionClosed
 from cloudstack import CloudStackClient, CloudstackService
 from rabbitmq import RabbitMQClient
 from settings import get_setting
@@ -12,7 +13,9 @@ class Cloudstack(object):
 
     def __init__(self, params):
         self.env = params.get('env')
+        self._connect()
 
+    def _connect(self):
         self.rabbitmq = RabbitMQClient(
             host=self._get_setting("RMQ_HOST"),
             port=int(self._get_setting("RMQ_PORT", 5672)),
@@ -28,6 +31,8 @@ class Cloudstack(object):
             return self._get_update(number_messages).next()
         except StopIteration:
             return []
+        except ConnectionClosed:
+            self._connect()
 
     def _get_update(self, number_messages=1):
         messages = []
