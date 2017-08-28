@@ -91,7 +91,6 @@ class Cloudstack(object):
                 "id": "vm-%s" % virtual_machine["id"],
                 "name": virtual_machine["name"],
                 "timestamp": self._parse_date(event_date),
-                "creation_date": self._parse_date(virtual_machine["created"]),
                 "provider": "globomap",
                 "properties": [
                     {
@@ -133,6 +132,10 @@ class Cloudstack(object):
                     {
                         "key": "environment",
                         "value": self.env
+                    },
+                    {
+                        "key": "creation_date",
+                        "value": self._parse_date(virtual_machine["created"])
                     }
                 ]
             }
