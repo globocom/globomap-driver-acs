@@ -81,61 +81,72 @@ class Cloudstack(object):
 
     def _get_virtual_machine_data(self, id, event_date=None):
         cloudstack_service = self._get_cloudstack_service()
-        virtual_machine = cloudstack_service.get_virtual_machine(id)
-        if virtual_machine:
+        vm = cloudstack_service.get_virtual_machine(id)
+        if vm:
             project = cloudstack_service.get_project(
-                virtual_machine["projectid"]
+                vm["projectid"]
             )
             account = project['account']
             element = {
-                "id": "vm-%s" % virtual_machine["id"],
-                "name": virtual_machine["name"],
+                "id": "vm-%s" % vm["id"],
+                "name": vm["name"],
                 "timestamp": self._parse_date(event_date),
                 "provider": "globomap",
                 "properties": [
                     {
                         "key": "uuid",
-                        "value": virtual_machine.get("id", "")
+                        "value": vm.get("id", ""),
+                        "description": "UUID"
                     },
                     {
                         "key": "zone",
-                        "value": virtual_machine.get("zonename", "")
+                        "value": vm.get("zonename", ""),
+                        "description": "Zone name"
                     },
                     {
                         "key": "service_offering",
-                        "value": virtual_machine.get("serviceofferingname", "")
+                        "value": vm.get("serviceofferingname", ""),
+                        "description": "Compute Offering"
                     },
                     {
                         "key": "cpu_cores",
-                        "value": virtual_machine.get("cpunumber", "")
+                        "value": vm.get("cpunumber", ""),
+                        "description": "Number of CPU cores"
                     },
                     {
                         "key": "cpu_speed",
-                        "value": virtual_machine.get("cpuspeed", "")
+                        "value": vm.get("cpuspeed", ""),
+                        "description": "CPU speed"
                     },
                     {
                         "key": "memory",
-                        "value": virtual_machine.get("memory", "")
+                        "value": vm.get("memory", ""),
+                        "description": "RAM size"
                     },
                     {
                         "key": "template",
-                        "value": virtual_machine.get("templatename", "")
+                        "value": vm.get("templatename", ""),
+                        "description": "Template name"
                     },
                     {
                         "key": "project",
-                        "value": virtual_machine.get("project", "")
+                        "value": vm.get("project", ""),
+                        "description": "Project"
                     },
                     {
                         "key": "account",
-                        "value": account
+                        "value": account,
+                        "description": "Account"
                     },
                     {
                         "key": "environment",
-                        "value": self.env
+                        "value": self.env,
+                        "description": "Cloudstack Region"
                     },
                     {
                         "key": "creation_date",
-                        "value": self._parse_date(virtual_machine["created"])
+                        "value": self._parse_date(vm["created"]),
+                        "description": "Creation Date"
                     }
                 ]
             }

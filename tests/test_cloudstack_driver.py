@@ -23,6 +23,12 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("globomap", vm["provider"])
         self.assertIsNotNone(vm["timestamp"])
         self.assertEqual(11, len(vm['properties']))
+
+        for property in vm['properties']:
+            self.assertIsNotNone(property['key'])
+            self.assertIsNotNone(property['value'])
+            self.assertIsNotNone(property['description'])
+
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
