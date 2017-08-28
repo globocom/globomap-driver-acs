@@ -22,6 +22,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("vm_name", vm["name"])
         self.assertEquals("globomap", vm["provider"])
         self.assertIsNotNone(vm["timestamp"])
+        self.assertIsNotNone(vm["creation_date"])
         self.assertEqual(10, len(vm['properties']))
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
@@ -91,6 +92,12 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client(None)
         self._mock_cloudstack_service(None, None)
         self.assertEquals([], self._create_driver().updates())
+
+    def test_parse_date(self):
+        self._mock_rabbitmq_client()
+        self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01 00:00:00 -0300'))
+        self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01T00:00:00-0300'))
+        self.assertIsNotNone(self._create_driver()._parse_date(None))
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()

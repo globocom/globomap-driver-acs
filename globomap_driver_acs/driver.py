@@ -1,5 +1,6 @@
 import logging
 import time
+import datetime
 from dateutil.parser import parse
 from pika.exceptions import ConnectionClosed
 from cloudstack import CloudStackClient, CloudstackService
@@ -62,7 +63,11 @@ class Cloudstack(object):
         event_completed = msg["status"] == "Completed"
 
         if event_completed and create_event:
-            vm = self._get_virtual_machine_data(msg["entityuuid"])
+            vm = self._get_virtual_machine_data(
+                msg["entityuuid"],
+                msg["eventDateTime"]
+            )
+
             if not vm:
                 return
             update = {
@@ -74,7 +79,7 @@ class Cloudstack(object):
             }
             return update
 
-    def _get_virtual_machine_data(self, id):
+    def _get_virtual_machine_data(self, id, event_date=None):
         cloudstack_service = self._get_cloudstack_service()
         virtual_machine = cloudstack_service.get_virtual_machine(id)
         if virtual_machine:
@@ -85,7 +90,8 @@ class Cloudstack(object):
             element = {
                 "id": "vm-%s" % virtual_machine["id"],
                 "name": virtual_machine["name"],
-                "timestamp": self._get_event_time(virtual_machine["created"]),
+                "timestamp": self._parse_date(event_date),
+                "creation_date": self._parse_date(virtual_machine["created"]),
                 "provider": "globomap",
                 "properties": [
                     {
@@ -132,8 +138,11 @@ class Cloudstack(object):
             }
             return element
 
-    def _get_event_time(self, event_time):
-        timetuple = parse(event_time).replace(tzinfo=None).timetuple()
+    def _parse_date(self, event_time):
+        if not event_time:
+            timetuple = datetime.datetime.now().timetuple()
+        else:
+            timetuple = parse(event_time).replace(tzinfo=None).timetuple()
         return int(time.mktime(timetuple))
 
     def _get_cloudstack_service(self):
