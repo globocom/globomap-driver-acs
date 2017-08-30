@@ -1,5 +1,7 @@
 import json
 import logging
+import datetime
+from pika.exceptions import ConnectionClosed
 from globomap_driver_acs.cloudstack import CloudStackClient, CloudstackService
 from globomap_driver_acs.rabbitmq import RabbitMQClient
 from globomap_driver_acs.settings import get_setting
@@ -12,6 +14,9 @@ class CloudstackDataLoader(object):
     def __init__(self, env):
         self.env = env
 
+        self._connect_rabbit()
+
+    def _connect_rabbit(self):
         self.rabbitmq = RabbitMQClient(
             host=self._get_setting("RMQ_HOST"),
             port=int(self._get_setting("RMQ_PORT", 5672)),
@@ -41,10 +46,12 @@ class CloudstackDataLoader(object):
         return {
             "event": "VM.CREATE",
             "status": "Completed",
+            "eventDateTime":
+                datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "entityuuid": vm_id
         }
 
-    def _publish_event(self, event):
+    def _publish_event(self, event, retry=True):
         try:
             exchange = self._get_setting("RMQ_LOADER_EXCHANGE")
             key = "management-server.ActionEvent." \
@@ -56,6 +63,13 @@ class CloudstackDataLoader(object):
 
             if not publish_ok:
                 raise Exception("Failed to publish")
+        except ConnectionClosed, e:
+            if retry:
+                self.log.error("RabbitMQ Connection closed, reconnecting")
+                self._connect_rabbit()
+                self._publish_event(event, False)
+            else:
+                raise e
         except:
             self.log.error("Unable to publish event %s" % event)
 

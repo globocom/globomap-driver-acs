@@ -14,9 +14,9 @@ class Cloudstack(object):
 
     def __init__(self, params):
         self.env = params.get('env')
-        self._connect()
+        self._connect_rabbit()
 
-    def _connect(self):
+    def _connect_rabbit(self):
         self.rabbitmq = RabbitMQClient(
             host=self._get_setting("RMQ_HOST"),
             port=int(self._get_setting("RMQ_PORT", 5672)),
@@ -32,8 +32,6 @@ class Cloudstack(object):
             return self._get_update(number_messages).next()
         except StopIteration:
             return []
-        except ConnectionClosed:
-            self._connect()
 
     def _get_update(self, number_messages=1):
         messages = []
@@ -48,6 +46,8 @@ class Cloudstack(object):
                 if messages:
                     yield messages
                 raise StopIteration
+            except ConnectionClosed:
+                self._connect_rabbit()
             else:
                 if update:
                     messages.append(update)
