@@ -59,12 +59,12 @@ class Cloudstack(object):
                     break
 
     def _format_update(self, msg):
-        create_event = msg["event"] == "VM.CREATE"
-        event_completed = msg["status"] == "Completed"
+        is_create_event = msg["event"] == "VM.CREATE"
+        is_vm_resource = msg["resource"] == "com.cloud.vm.VirtualMachine"
 
-        if event_completed and create_event:
+        if is_create_event and is_vm_resource:
             vm = self._get_virtual_machine_data(
-                msg["entityuuid"],
+                msg["id"],
                 msg["eventDateTime"]
             )
 

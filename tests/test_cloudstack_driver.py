@@ -66,10 +66,10 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
-    def test_format_update_given_event_not_completed(self):
+    def test_format_update_wrong_event(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        update = self._create_driver()._format_update(open_json('tests/json/vm_create_scheduled_event.json'))
+        update = self._create_driver()._format_update(open_json('tests/json/vm_create_wrong_event.json'))
 
         self.assertIsNone(update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)

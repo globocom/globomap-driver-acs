@@ -45,17 +45,17 @@ class CloudstackDataLoader(object):
     def _create_event_object(self, vm_id):
         return {
             "event": "VM.CREATE",
-            "status": "Completed",
+            "resource": "com.cloud.vm.VirtualMachine",
             "eventDateTime":
                 datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "entityuuid": vm_id
+            "id": vm_id
         }
 
     def _publish_event(self, event, retry=True):
         try:
             exchange = self._get_setting("RMQ_LOADER_EXCHANGE")
-            key = "management-server.ActionEvent." \
-                  "VM-CREATE.VirtualMachine.%s" % event['entityuuid']
+            key = "management-server.UsageEvent." \
+                  "VM-CREATE.com-cloud-vm-VirtualMachine.%s" % event['id']
 
             publish_ok = self.rabbitmq.post_message(
                 exchange, key, json.dumps(event)
