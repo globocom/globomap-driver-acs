@@ -59,8 +59,9 @@ class Cloudstack(object):
                     break
 
     def _format_update(self, msg):
-        is_create_event = msg["event"] == "VM.CREATE"
-        is_vm_resource = msg["resource"] == "com.cloud.vm.VirtualMachine"
+        is_create_event = msg.get("event", "") == "VM.CREATE"
+        is_vm_resource = \
+            msg.get("resource", "") == "com.cloud.vm.VirtualMachine"
 
         if is_create_event and is_vm_resource:
             vm = self._get_virtual_machine_data(
