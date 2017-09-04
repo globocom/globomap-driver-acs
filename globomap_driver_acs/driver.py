@@ -64,8 +64,12 @@ class Cloudstack(object):
     def _format_update(self, msg):
         is_vm_create_event = self._is_vm_create_event(msg)
         is_vm_upgrade_event = self._is_vm_upgrade_event(msg)
+        is_vm_power_state_event = self._is_vm_power_state_event(msg)
 
-        if is_vm_create_event or is_vm_upgrade_event:
+        if (is_vm_create_event or
+                is_vm_upgrade_event or
+                is_vm_power_state_event):
+
             vm = self._get_virtual_machine_data(
                 self._get_vm_id(msg), msg["eventDateTime"]
             )
@@ -82,11 +86,10 @@ class Cloudstack(object):
             }
 
     def _get_vm_id(self, msg):
-        event = msg.get("event")
-        if event is self.VM_CREATE_EVENT:
-            return msg.get("id")
-        elif event is self.VM_UPGRADE_EVENT:
+        if msg.get("event") is self.VM_UPGRADE_EVENT:
             return msg.get("entityuuid")
+        else:
+            return msg.get("id")
 
     def _is_vm_create_event(self, msg):
         is_create_event = msg.get("event") == self.VM_CREATE_EVENT
@@ -96,6 +99,11 @@ class Cloudstack(object):
     def _is_vm_upgrade_event(self, msg):
         is_vm_upgrade_event = msg.get("event") == self.VM_UPGRADE_EVENT
         is_event_complete = msg.get("status") == "Completed"
+        return is_vm_upgrade_event and is_event_complete
+
+    def _is_vm_power_state_event(self, msg):
+        is_vm_upgrade_event = msg.get("resource") == "VirtualMachine"
+        is_event_complete = msg.get("status") == "postStateTransitionEvent"
         return is_vm_upgrade_event and is_event_complete
 
     def _get_virtual_machine_data(self, id, event_date=None):
@@ -116,6 +124,16 @@ class Cloudstack(object):
                         "key": "uuid",
                         "value": vm.get("id", ""),
                         "description": "UUID"
+                    },
+                    {
+                        "key": "state",
+                        "value": vm.get("state", ""),
+                        "description": "Power state"
+                    },
+                    {
+                        "key": "host",
+                        "value": vm.get("hostname", ""),
+                        "description": "Host name"
                     },
                     {
                         "key": "zone",

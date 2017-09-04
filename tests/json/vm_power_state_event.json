@@ -1,0 +1,8 @@
+{
+  "id":"3018bdf1-4843-43b3-bdcf-ba1beb63c930",
+  "old-state":"Running",
+  "new-state":"Running",
+  "eventDateTime":"2010-01-01 00:00:00 -0300",
+  "status":"postStateTransitionEvent",
+  "resource":"VirtualMachine"
+}

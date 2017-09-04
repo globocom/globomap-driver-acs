@@ -22,7 +22,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("vm_name", vm["name"])
         self.assertEquals("globomap", vm["provider"])
         self.assertIsNotNone(vm["timestamp"])
-        self.assertEqual(11, len(vm['properties']))
+        self.assertEqual(13, len(vm['properties']))
 
         for property in vm['properties']:
             self.assertIsNotNone(property['key'])
@@ -72,6 +72,36 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
+
+    def test_format_vm_power_state_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+        update = self._create_driver()._format_update(open_json('tests/json/vm_power_state_event.json'))
+
+        self.assertIsNotNone(update)
+        self.assertEquals("PATCH", update["action"])
+        self.assertEquals("comp_unit", update["collection"])
+        self.assertEquals("collections", update["type"])
+        self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
+        self.assertTrue(cloudstack_mock.get_project.called)
+
+    def test_format_invalid_vm_power_state_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+        update = self._create_driver()._format_update({
+            "status": "preStateTransitionEvent"
+        })
+
+        self.assertIsNone(update)
+        self.assertFalse(cloudstack_mock.get_virtual_machine.called)
+        self.assertFalse(cloudstack_mock.get_project.called)
 
     def test_format_incomplete_upgrade_vm_size_update(self):
         self._mock_rabbitmq_client()
@@ -149,6 +179,62 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01 00:00:00 -0300'))
         self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01T00:00:00-0300'))
         self.assertIsNotNone(self._create_driver()._parse_date(None))
+
+    def test_is_vm_create_event(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        self.assertTrue(driver._is_vm_create_event({
+            "resource": "com.cloud.vm.VirtualMachine",
+            "event": "VM.CREATE"
+        }))
+
+        self.assertFalse(driver._is_vm_create_event({
+            "status": "Completed",
+            "event": "VM.CREATE"
+        }))
+
+        self.assertFalse(driver._is_vm_create_event({
+            "event": "VM.START"
+        }))
+
+        self.assertFalse(driver._is_vm_create_event({}))
+
+    def test_is_vm_upgrade_event(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        self.assertTrue(driver._is_vm_upgrade_event({
+            "status": "Completed",
+            "event": "VM.UPGRADE"
+        }))
+
+        self.assertFalse(driver._is_vm_upgrade_event({
+            "event": "VM.UPGRADE"
+        }))
+
+        self.assertFalse(driver._is_vm_upgrade_event({}))
+
+    def test_is_vm_power_state_event(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        self.assertTrue(driver._is_vm_power_state_event({
+            "status": "postStateTransitionEvent",
+            "resource": "VirtualMachine"
+        }))
+
+        self.assertFalse(driver._is_vm_power_state_event({
+              "status": "pretStateTransitionEvent",
+              "resource": "VirtualMachine"
+        }))
+
+        self.assertFalse(driver._is_vm_power_state_event({
+              "resource": "VirtualMachine"
+        }))
+
+        self.assertFalse(driver._is_vm_power_state_event({}))
+
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()
