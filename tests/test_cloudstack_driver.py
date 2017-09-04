@@ -41,7 +41,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
-    def test_format_update(self):
+    def test_format_create_vm_update(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
@@ -56,6 +56,52 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
+
+    def test_format_upgrade_vm_size_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+        update = self._create_driver()._format_update(open_json('tests/json/vm_upgrade_event.json'))
+
+        self.assertIsNotNone(update)
+        self.assertEquals("PATCH", update["action"])
+        self.assertEquals("comp_unit", update["collection"])
+        self.assertEquals("collections", update["type"])
+        self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
+        self.assertTrue(cloudstack_mock.get_project.called)
+
+    def test_format_incomplete_upgrade_vm_size_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+        update = self._create_driver()._format_update({
+            "status":"Started",
+            "event": "VM.UPGRADE"
+        })
+
+        self.assertIsNone(update)
+        self.assertFalse(cloudstack_mock.get_virtual_machine.called)
+        self.assertFalse(cloudstack_mock.get_project.called)
+
+    def test_format_unmapped_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+        update = self._create_driver()._format_update({
+            "status":"Completed",
+            "event": "VM.START"
+        })
+
+        self.assertIsNone(update)
+        self.assertFalse(cloudstack_mock.get_virtual_machine.called)
+        self.assertFalse(cloudstack_mock.get_project.called)
 
     def test_format_update_given_no_vm_found(self):
         self._mock_rabbitmq_client()

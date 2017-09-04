@@ -12,6 +12,9 @@ class Cloudstack(object):
 
     log = logging.getLogger(__name__)
 
+    VM_CREATE_EVENT = "VM.CREATE"
+    VM_UPGRADE_EVENT = "VM.UPGRADE"
+
     def __init__(self, params):
         self.env = params.get('env')
         self._connect_rabbit()
@@ -59,26 +62,41 @@ class Cloudstack(object):
                     break
 
     def _format_update(self, msg):
-        is_create_event = msg.get("event", "") == "VM.CREATE"
-        is_vm_resource = \
-            msg.get("resource", "") == "com.cloud.vm.VirtualMachine"
+        is_vm_create_event = self._is_vm_create_event(msg)
+        is_vm_upgrade_event = self._is_vm_upgrade_event(msg)
 
-        if is_create_event and is_vm_resource:
+        if is_vm_create_event or is_vm_upgrade_event:
             vm = self._get_virtual_machine_data(
-                msg["id"],
-                msg["eventDateTime"]
+                self._get_vm_id(msg), msg["eventDateTime"]
             )
 
             if not vm:
                 return
-            update = {
+
+            return {
                 "action": "PATCH",
                 "collection": "comp_unit",
                 "type": "collections",
                 "element": vm,
                 "key": "globomap_%s" % vm['id']
             }
-            return update
+
+    def _get_vm_id(self, msg):
+        event = msg.get("event")
+        if event is self.VM_CREATE_EVENT:
+            return msg.get("id")
+        elif event is self.VM_UPGRADE_EVENT:
+            return msg.get("entityuuid")
+
+    def _is_vm_create_event(self, msg):
+        is_create_event = msg.get("event") == self.VM_CREATE_EVENT
+        is_vm_resource = msg.get("resource") == "com.cloud.vm.VirtualMachine"
+        return is_create_event and is_vm_resource
+
+    def _is_vm_upgrade_event(self, msg):
+        is_vm_upgrade_event = msg.get("event") == self.VM_UPGRADE_EVENT
+        is_event_complete = msg.get("status") == "Completed"
+        return is_vm_upgrade_event and is_event_complete
 
     def _get_virtual_machine_data(self, id, event_date=None):
         cloudstack_service = self._get_cloudstack_service()
