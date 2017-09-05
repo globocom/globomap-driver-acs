@@ -47,9 +47,8 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update(open_json('tests/json/vm_create_event.json'))
+        update = self._create_driver()._create_updates(open_json('tests/json/vm_create_event.json'))[0]
 
-        self.assertIsNotNone(update)
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
@@ -63,9 +62,8 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update(open_json('tests/json/vm_upgrade_event.json'))
+        update = self._create_driver()._create_updates(open_json('tests/json/vm_upgrade_event.json'))[0]
 
-        self.assertIsNotNone(update)
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
@@ -79,9 +77,8 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update(open_json('tests/json/vm_power_state_event.json'))
+        update = self._create_driver()._create_updates(open_json('tests/json/vm_power_state_event.json'))[0]
 
-        self.assertIsNotNone(update)
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
@@ -95,11 +92,11 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update({
+        update = self._create_driver()._create_updates({
             "status": "preStateTransitionEvent"
         })
 
-        self.assertIsNone(update)
+        self.assertEqual([], update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
@@ -109,12 +106,12 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update({
+        update = self._create_driver()._create_updates({
             "status":"Started",
             "event": "VM.UPGRADE"
         })
 
-        self.assertIsNone(update)
+        self.assertEqual([], update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
@@ -124,30 +121,30 @@ class TestCloudstackDriver(unittest.TestCase):
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        update = self._create_driver()._format_update({
+        update = self._create_driver()._create_updates({
             "status":"Completed",
             "event": "VM.START"
         })
 
-        self.assertIsNone(update)
+        self.assertEqual([], update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
     def test_format_update_given_no_vm_found(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        update = self._create_driver()._format_update(open_json('tests/json/vm_create_event.json'))
+        update = self._create_driver()._create_updates(open_json('tests/json/vm_create_event.json'))
 
-        self.assertIsNone(update)
+        self.assertEqual([], update)
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
     def test_format_update_wrong_event(self):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(None, None)
-        update = self._create_driver()._format_update(open_json('tests/json/vm_create_wrong_event.json'))
+        update = self._create_driver()._create_updates(open_json('tests/json/vm_create_wrong_event.json'))
 
-        self.assertIsNone(update)
+        self.assertEqual([], update)
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
@@ -160,7 +157,6 @@ class TestCloudstackDriver(unittest.TestCase):
         updates = self._create_driver().updates()
         update = updates[0]
 
-        self.assertIsNotNone(updates)
         self.assertEqual(1, len(updates))
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])

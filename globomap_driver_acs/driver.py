@@ -37,35 +37,31 @@ class Cloudstack(object):
             return []
 
     def _get_update(self, number_messages=1):
-        messages = []
+        updates = []
         while True:
-            update = None
-            message = None
             try:
-                message = self.rabbitmq.get_message()
-                if message:
-                    update = self._format_update(message)
+                raw_msg = self.rabbitmq.get_message()
+                if raw_msg:
+                    updates += self._create_updates(raw_msg)
+                else:
+                    break
             except StopIteration:
-                if messages:
-                    yield messages
+                if updates:
+                    yield updates
                 raise StopIteration
             except ConnectionClosed:
                 self._connect_rabbit()
             else:
-                if update:
-                    messages.append(update)
-                if len(messages) == number_messages:
-                    yield messages
-                    messages = []
+                if len(updates) == number_messages:
+                    yield updates
+                    updates = []
 
-                if not message:
-                    break
-
-    def _format_update(self, msg):
+    def _create_updates(self, msg):
         is_vm_create_event = self._is_vm_create_event(msg)
         is_vm_upgrade_event = self._is_vm_upgrade_event(msg)
         is_vm_power_state_event = self._is_vm_power_state_event(msg)
 
+        updates = []
         if (is_vm_create_event or
                 is_vm_upgrade_event or
                 is_vm_power_state_event):
@@ -74,16 +70,19 @@ class Cloudstack(object):
                 self._get_vm_id(msg), msg["eventDateTime"]
             )
 
-            if not vm:
-                return
+            if vm:
+                self._create_vm_update(updates, vm)
 
-            return {
-                "action": "PATCH",
-                "collection": "comp_unit",
-                "type": "collections",
-                "element": vm,
-                "key": "globomap_%s" % vm['id']
-            }
+        return updates
+
+    def _create_vm_update(self, updates, vm):
+        updates.append({
+            "action": "PATCH",
+            "collection": "comp_unit",
+            "type": "collections",
+            "element": vm,
+            "key": "globomap_%s" % vm['id']
+        })
 
     def _get_vm_id(self, msg):
         if msg.get("event") is self.VM_UPGRADE_EVENT:
