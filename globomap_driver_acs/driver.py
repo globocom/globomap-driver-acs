@@ -1,9 +1,12 @@
+import hashlib
+import re
 import logging
 import time
 import datetime
 from dateutil.parser import parse
 from pika.exceptions import ConnectionClosed
 from cloudstack import CloudStackClient, CloudstackService
+from globomap_driver_acs.csv_reader import CsvReader
 from rabbitmq import RabbitMQClient
 from settings import get_setting
 
@@ -14,9 +17,19 @@ class Cloudstack(object):
 
     VM_CREATE_EVENT = "VM.CREATE"
     VM_UPGRADE_EVENT = "VM.UPGRADE"
+    PATCH_ACTION = "PATCH"
+    CREATE_ACTION = "CREATE"
+    KEY_TEMPLATE = "globomap_%s"
 
     def __init__(self, params):
         self.env = params.get('env')
+
+        prj_allocation_file = self._get_setting("PROJECT_ALLOCATION_FILE")
+        self.project_allocations = dict()
+        if prj_allocation_file:
+            self.project_allocations = self._read_project_allocation_file(
+                prj_allocation_file
+            )
         self._connect_rabbit()
 
     def _connect_rabbit(self):
@@ -37,12 +50,22 @@ class Cloudstack(object):
             return []
 
     def _get_update(self, number_messages=1):
+        """
+        Reads and processes messages from the Cloudstack event bus until
+        it finds the number of messages matching the 'number_messages'
+        parameter
+        """
+
         updates = []
+        msg_count = 0
         while True:
             try:
                 raw_msg = self.rabbitmq.get_message()
+
+                self.log.debug("Message received from queue: %s" % raw_msg)
                 if raw_msg:
                     updates += self._create_updates(raw_msg)
+                    msg_count += 1
                 else:
                     break
             except StopIteration:
@@ -50,45 +73,230 @@ class Cloudstack(object):
                     yield updates
                 raise StopIteration
             except ConnectionClosed:
+                self.log.error("Error connecting to RabbitMQ, reconnecting")
                 self._connect_rabbit()
             else:
-                if len(updates) == number_messages:
+                if msg_count >= number_messages:
                     yield updates
                     updates = []
+                    msg_count = 0
 
-    def _create_updates(self, msg):
-        is_vm_create_event = self._is_vm_create_event(msg)
-        is_vm_upgrade_event = self._is_vm_upgrade_event(msg)
-        is_vm_power_state_event = self._is_vm_power_state_event(msg)
+    def _create_updates(self, raw_msg):
+        """
+        Creates update documents for every create, upgrade or power
+        state change events for Cloudstack virtual machines. On newly created
+        virtual machines also creates edges documents so the VM can be
+        linked to it's client business service and business process
+        """
 
         updates = []
-        if (is_vm_create_event or
-                is_vm_upgrade_event or
-                is_vm_power_state_event):
+        is_create = self._is_vm_create_event(raw_msg)
+        is_upgrade = self._is_vm_upgrade_event(raw_msg)
+        is_power_state_change = self._is_vm_power_state_event(raw_msg)
 
-            vm = self._get_virtual_machine_data(
-                self._get_vm_id(msg), msg["eventDateTime"]
+        if is_create or is_upgrade or is_power_state_change:
+            cloudstack_service = self._get_cloudstack_service()
+
+            vm = cloudstack_service.get_virtual_machine(
+                self._get_vm_id(raw_msg)
             )
 
             if vm:
-                self._create_vm_update(updates, vm)
+                self.log.debug("Creating updates for event: %s" % raw_msg)
+
+                project = cloudstack_service.get_project(vm["projectid"])
+
+                comp_unit = self._format_comp_unit_document(
+                    vm, project, raw_msg["eventDateTime"]
+                )
+
+                vm_update_document = self._create_update_document(
+                    self.PATCH_ACTION, "comp_unit", "collections",
+                    comp_unit, self.KEY_TEMPLATE % comp_unit['id']
+                )
+
+                updates.append(vm_update_document)
+                if self.project_allocations and is_create:
+                    self._create_process_update(updates, comp_unit)
+                    self._create_client_update(
+                        updates, project['name'], comp_unit)
+                    self._create_business_service_update(
+                        updates, project['name'], comp_unit)
 
         return updates
 
-    def _create_vm_update(self, updates, vm):
-        updates.append({
-            "action": "PATCH",
-            "collection": "comp_unit",
-            "type": "collections",
-            "element": vm,
-            "key": "globomap_%s" % vm['id']
-        })
+    def _format_comp_unit_document(self, vm, project, event_date=None):
+        return {
+            "id": "vm-%s" % vm["id"],
+            "name": vm["name"],
+            "timestamp": self._parse_date(event_date),
+            "provider": "globomap",
+            "properties": [
+                {
+                    "key": "uuid",
+                    "value": vm.get("id", ""),
+                    "description": "UUID"
+                },
+                {
+                    "key": "state",
+                    "value": vm.get("state", ""),
+                    "description": "Power state"
+                },
+                {
+                    "key": "host",
+                    "value": vm.get("hostname", ""),
+                    "description": "Host name"
+                },
+                {
+                    "key": "zone",
+                    "value": vm.get("zonename", ""),
+                    "description": "Zone name"
+                },
+                {
+                    "key": "service_offering",
+                    "value": vm.get("serviceofferingname", ""),
+                    "description": "Compute Offering"
+                },
+                {
+                    "key": "cpu_cores",
+                    "value": vm.get("cpunumber", ""),
+                    "description": "Number of CPU cores"
+                },
+                {
+                    "key": "cpu_speed",
+                    "value": vm.get("cpuspeed", ""),
+                    "description": "CPU speed"
+                },
+                {
+                    "key": "memory",
+                    "value": vm.get("memory", ""),
+                    "description": "RAM size"
+                },
+                {
+                    "key": "template",
+                    "value": vm.get("templatename", ""),
+                    "description": "Template name"
+                },
+                {
+                    "key": "project",
+                    "value": vm.get("project", ""),
+                    "description": "Project"
+                },
+                {
+                    "key": "account",
+                    "value": project['account'],
+                    "description": "Account"
+                },
+                {
+                    "key": "environment",
+                    "value": self.env,
+                    "description": "Cloudstack Region"
+                },
+                {
+                    "key": "creation_date",
+                    "value": self._parse_date(vm["created"]),
+                    "description": "Creation Date"
+                }
+            ]
+        }
 
     def _get_vm_id(self, msg):
         if msg.get("event") is self.VM_UPGRADE_EVENT:
             return msg.get("entityuuid")
         else:
             return msg.get("id")
+
+    def _create_process_update(self, updates, comp_unit):
+        process = "Processamento de Dados em Modelo Virtual"
+        updates.append(self._create_edge(
+            'business_process', comp_unit, process
+        ))
+
+    def _create_business_service_update(self, updates, prj_name, comp_unit):
+        """
+        Creates the edge document linking a virtual machine document to a
+        business service. If the business service name is surrounded by
+        <> (lesser and greater sign), like <Business>, it means that this
+        is a internal business service and therefore not inserted in the
+        GloboMap API, so it must be created.
+        """
+
+        allocation = self.project_allocations.get(prj_name)
+        if allocation:
+            business_service = allocation['business_service']
+            if re.search('<.+>', business_service):
+                business_service_element = {
+                    'id': hashlib.md5(business_service.lower()).hexdigest(),
+                    'name': business_service,
+                    'provider': 'globomap',
+                    'timestamp': datetime.datetime.now().timetuple(),
+                }
+
+                updates.append(self._create_update_document(
+                    self.PATCH_ACTION, "business_service", "collections",
+                    business_service_element,
+                    self.KEY_TEMPLATE % business_service_element['id']
+                ))
+
+            updates.append(self._create_edge(
+                'business_service', comp_unit, business_service
+            ))
+
+    def _create_client_update(self, updates, project_name, comp_unit):
+        allocation = self.project_allocations.get(project_name)
+        if allocation:
+            updates.append(self._create_edge(
+                'client', comp_unit, allocation['client']
+            ))
+
+    def _create_edge(self, collection, comp_unit, edge_from):
+        edge_from = hashlib.md5(edge_from.lower()).hexdigest()
+        edge = {
+            'id': comp_unit['id'],
+            'provider': 'globomap',
+            'timestamp': int(time.mktime(datetime.datetime.now().timetuple())),
+            'from': '{}/cmdb_{}'.format(collection, edge_from),
+            'to': 'comp_unit/globomap_{}'.format(comp_unit['id'])
+        }
+
+        collection = "{}_comp_unit".format(collection)
+        return self._create_update_document(
+            self.CREATE_ACTION, collection, 'edges', edge
+        )
+
+    def _create_update_document(self, action, collection,
+                                type, element, key=None):
+        update = {
+            "action": action,
+            "collection": collection,
+            "type": type,
+            "element": element
+        }
+        if key:
+            update['key'] = key
+        return update
+
+    def _read_project_allocation_file(self, file_path):
+        """
+        Reads in a given path a CSV file describing which business
+        service and client are associated with each of the cloudstack
+        projects. The format of the file is described below:
+        <account>,<project>,<account_project>,<client>,<business_service>,
+        The second, fourth and fifth fields are considered by this code
+        """
+
+        lines = CsvReader(file_path, ',').get_lines()
+        project_allocations = dict()
+
+        for line in lines:
+            project_name = line[1]
+            business_service_name = line[4]
+            client = line[3]
+            if business_service_name and client:
+                project_allocations[project_name] = {
+                    "business_service": business_service_name, "client": client
+                }
+        return project_allocations
 
     def _is_vm_create_event(self, msg):
         is_create_event = msg.get("event") == self.VM_CREATE_EVENT
@@ -104,89 +312,6 @@ class Cloudstack(object):
         is_vm_upgrade_event = msg.get("resource") == "VirtualMachine"
         is_event_complete = msg.get("status") == "postStateTransitionEvent"
         return is_vm_upgrade_event and is_event_complete
-
-    def _get_virtual_machine_data(self, id, event_date=None):
-        cloudstack_service = self._get_cloudstack_service()
-        vm = cloudstack_service.get_virtual_machine(id)
-        if vm:
-            project = cloudstack_service.get_project(
-                vm["projectid"]
-            )
-            account = project['account']
-            element = {
-                "id": "vm-%s" % vm["id"],
-                "name": vm["name"],
-                "timestamp": self._parse_date(event_date),
-                "provider": "globomap",
-                "properties": [
-                    {
-                        "key": "uuid",
-                        "value": vm.get("id", ""),
-                        "description": "UUID"
-                    },
-                    {
-                        "key": "state",
-                        "value": vm.get("state", ""),
-                        "description": "Power state"
-                    },
-                    {
-                        "key": "host",
-                        "value": vm.get("hostname", ""),
-                        "description": "Host name"
-                    },
-                    {
-                        "key": "zone",
-                        "value": vm.get("zonename", ""),
-                        "description": "Zone name"
-                    },
-                    {
-                        "key": "service_offering",
-                        "value": vm.get("serviceofferingname", ""),
-                        "description": "Compute Offering"
-                    },
-                    {
-                        "key": "cpu_cores",
-                        "value": vm.get("cpunumber", ""),
-                        "description": "Number of CPU cores"
-                    },
-                    {
-                        "key": "cpu_speed",
-                        "value": vm.get("cpuspeed", ""),
-                        "description": "CPU speed"
-                    },
-                    {
-                        "key": "memory",
-                        "value": vm.get("memory", ""),
-                        "description": "RAM size"
-                    },
-                    {
-                        "key": "template",
-                        "value": vm.get("templatename", ""),
-                        "description": "Template name"
-                    },
-                    {
-                        "key": "project",
-                        "value": vm.get("project", ""),
-                        "description": "Project"
-                    },
-                    {
-                        "key": "account",
-                        "value": account,
-                        "description": "Account"
-                    },
-                    {
-                        "key": "environment",
-                        "value": self.env,
-                        "description": "Cloudstack Region"
-                    },
-                    {
-                        "key": "creation_date",
-                        "value": self._parse_date(vm["created"]),
-                        "description": "Creation Date"
-                    }
-                ]
-            }
-            return element
 
     def _parse_date(self, event_time):
         if not event_time:

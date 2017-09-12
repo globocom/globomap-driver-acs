@@ -1,3 +1,4 @@
+import hashlib
 import unittest
 from mock import patch, Mock
 from globomap_driver_acs.driver import Cloudstack
@@ -9,37 +10,23 @@ class TestCloudstackDriver(unittest.TestCase):
     def tearDown(self):
         patch.stopall()
 
-    def test_get_virtual_machine(self):
+    def test_format_comp_unit(self):
         self._mock_rabbitmq_client()
-        cloudstack_mock = self._mock_cloudstack_service(
-            open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
-        )
-        vm = self._create_driver()._get_virtual_machine_data('uuid')
+        vm = open_json('tests/json/vm.json')['virtualmachine'][0]
+        project = open_json('tests/json/project.json')['project'][0]
+        compt_unit = self._create_driver()._format_comp_unit_document(vm, project)
 
-        self.assertIsNotNone(vm)
-        self.assertEquals("vm-9a140a96-b304-4512-8114-f33cfd6a875c", vm["id"])
-        self.assertEquals("vm_name", vm["name"])
-        self.assertEquals("globomap", vm["provider"])
-        self.assertIsNotNone(vm["timestamp"])
-        self.assertEqual(13, len(vm['properties']))
+        self.assertIsNotNone(compt_unit)
+        self.assertEquals("vm-9a140a96-b304-4512-8114-f33cfd6a875c", compt_unit["id"])
+        self.assertEquals("vm_name", compt_unit["name"])
+        self.assertEquals("globomap", compt_unit["provider"])
+        self.assertIsNotNone(compt_unit["timestamp"])
+        self.assertEqual(13, len(compt_unit['properties']))
 
-        for property in vm['properties']:
+        for property in compt_unit['properties']:
             self.assertIsNotNone(property['key'])
             self.assertIsNotNone(property['value'])
             self.assertIsNotNone(property['description'])
-
-        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
-        self.assertTrue(cloudstack_mock.get_project.called)
-
-    def test_get_virtual_machine_expected_not_found(self):
-        self._mock_rabbitmq_client()
-        cloudstack_mock = self._mock_cloudstack_service(None, None)
-        vm = self._create_driver()._get_virtual_machine_data('uuid')
-
-        self.assertIsNone(vm)
-        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
-        self.assertFalse(cloudstack_mock.get_project.called)
 
     def test_format_create_vm_update(self):
         self._mock_rabbitmq_client()
@@ -231,6 +218,133 @@ class TestCloudstackDriver(unittest.TestCase):
 
         self.assertFalse(driver._is_vm_power_state_event({}))
 
+    def test_read_project_allocation_file(self):
+        self._mock_rabbitmq_client()
+        csv_reader_mock = self._mock_csv_reader([
+            ['account_a', 'Project A', 'account_a - Project A', 'Client A', 'Service A'],
+            ['account_b', 'Project B', 'account_b - Project B', 'Client B', 'Service B'],
+            ['account_c', 'Project C', 'account_c - Project C', 'Client C', 'Service C']
+        ])
+        driver = self._create_driver()
+
+        project_allocations = driver._read_project_allocation_file('/path/to/file')
+        self.assertIsNotNone(project_allocations)
+
+        self.assertEqual('Client A', project_allocations['Project A']['client'])
+        self.assertEqual('Client B', project_allocations['Project B']['client'])
+        self.assertEqual('Client C', project_allocations['Project C']['client'])
+        csv_reader_mock.assert_called_with('/path/to/file', ',')
+
+    def test_read_project_allocation_file_given_empty_service_name(self):
+        self._mock_rabbitmq_client()
+        csv_reader_mock = self._mock_csv_reader([
+            ['account_a', 'Project A', 'account_a - Project A', 'Client A', '']
+        ])
+        driver = self._create_driver()
+
+        project_allocations = driver._read_project_allocation_file('/path/to/file')
+        self.assertIsNone(project_allocations.get('Project A'))
+        csv_reader_mock.assert_called_with('/path/to/file', ',')
+
+    def test_read_project_allocation_file_given_empty_client(self):
+        self._mock_rabbitmq_client()
+        csv_reader_mock = self._mock_csv_reader([
+            ['account_a', 'Project A', 'account_a - Project A', '', 'Service A']
+        ])
+        driver = self._create_driver()
+
+        project_allocations = driver._read_project_allocation_file('/path/to/file')
+        self.assertIsNone(project_allocations.get('Project A'))
+        csv_reader_mock.assert_called_with('/path/to/file', ',')
+
+    def test_create_process_update(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        updates = []
+        driver._create_process_update(updates, {'id': '123'})
+        self.assertEqual(1, len(updates))
+
+    def test_create_client_update(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        driver.project_allocations = {'Project A': {'client': 'Client A'}}
+
+        updates = []
+        driver._create_client_update(updates, 'Project A', {'id': '123'})
+        self.assertEqual(1, len(updates))
+
+    def test_create_client_update_given_project_not_found(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        driver.project_allocations = {}
+
+        updates = []
+        driver._create_client_update(updates, 'Project A', {'id': '123'})
+        self.assertEqual(0, len(updates))
+
+    def test_create_business_service_update(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        driver.project_allocations = {'Project A': {'business_service': 'Business Service A'}}
+
+        updates = []
+        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        self.assertEqual(1, len(updates))
+
+    def test_create_business_service_update_project_not_found(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        driver.project_allocations = {}
+
+        updates = []
+        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        self.assertEqual(0, len(updates))
+
+    def test_create_business_service_update_given_internal_service(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+        driver.project_allocations = {'Project A': {'business_service': '<Internal Business Service>'}}
+
+        updates = []
+        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        business_service_creation = updates[0]
+        self.assertEqual(2, len(updates))
+        self.assertEqual('PATCH', business_service_creation['action'])
+        self.assertEqual('business_service', business_service_creation['collection'])
+        self.assertEqual('collections', business_service_creation['type'])
+
+    def test_create_edge(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        service = 'Business Service A'
+        edge = driver._create_edge('business_service', {'id': '1'}, service)
+        element = edge['element']
+        business_service_hashed_name = hashlib.md5(service.lower()).hexdigest()
+
+        self.assertEqual('CREATE', edge['action'])
+        self.assertEqual('business_service_comp_unit', edge['collection'])
+        self.assertEqual('edges', edge['type'])
+        self.assertEqual('1', element['id'])
+        self.assertEqual('globomap', element['provider'])
+        self.assertIsNotNone(element['timestamp'])
+        self.assertEqual(int, type(element['timestamp']))
+        self.assertEqual('business_service/cmdb_%s' % business_service_hashed_name, element['from'])
+        self.assertEqual('comp_unit/globomap_1', element['to'])
+
+    def test_create_update_document(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        update = driver._create_update_document(
+            'CREATE', 'comp_unit', 'collections', {}, 'KEY'
+        )
+
+        self.assertEqual('CREATE', update['action'])
+        self.assertEqual('comp_unit', update['collection'])
+        self.assertEqual('collections', update['type'])
+        self.assertEqual({}, update['element'])
+        self.assertEqual('KEY', update['key'])
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()
@@ -249,6 +363,13 @@ class TestCloudstackDriver(unittest.TestCase):
         acs_service_mock.get_virtual_machine.return_value = vm
         acs_service_mock.get_project.return_value = project
         return acs_service_mock
+
+    def _mock_csv_reader(self, parsed_csv_file):
+        csv_reader_mock = patch("globomap_driver_acs.driver.CsvReader").start()
+        read_lines_mock = Mock()
+        csv_reader_mock.return_value = read_lines_mock
+        read_lines_mock.get_lines.return_value = parsed_csv_file
+        return csv_reader_mock
 
     def _create_driver(self):
         driver = Cloudstack({'env': 'ENV'})
