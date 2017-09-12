@@ -21,12 +21,13 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("vm_name", compt_unit["name"])
         self.assertEquals("globomap", compt_unit["provider"])
         self.assertIsNotNone(compt_unit["timestamp"])
-        self.assertEqual(13, len(compt_unit['properties']))
+        self.assertEqual(13, len(compt_unit['properties'].keys()))
 
-        for property in compt_unit['properties']:
-            self.assertIsNotNone(property['key'])
-            self.assertIsNotNone(property['value'])
-            self.assertIsNotNone(property['description'])
+        for property_key in compt_unit['properties'].keys():
+            property_meta = compt_unit['properties_metadata'][property_key]
+            self.assertIsNotNone(compt_unit['properties'][property_key])
+            self.assertIsNotNone(property_meta)
+            self.assertIsNotNone(property_meta['description'])
 
     def test_format_create_vm_update(self):
         self._mock_rabbitmq_client()

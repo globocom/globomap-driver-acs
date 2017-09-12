@@ -131,73 +131,36 @@ class Cloudstack(object):
             "name": vm["name"],
             "timestamp": self._parse_date(event_date),
             "provider": "globomap",
-            "properties": [
-                {
-                    "key": "uuid",
-                    "value": vm.get("id", ""),
-                    "description": "UUID"
-                },
-                {
-                    "key": "state",
-                    "value": vm.get("state", ""),
-                    "description": "Power state"
-                },
-                {
-                    "key": "host",
-                    "value": vm.get("hostname", ""),
-                    "description": "Host name"
-                },
-                {
-                    "key": "zone",
-                    "value": vm.get("zonename", ""),
-                    "description": "Zone name"
-                },
-                {
-                    "key": "service_offering",
-                    "value": vm.get("serviceofferingname", ""),
-                    "description": "Compute Offering"
-                },
-                {
-                    "key": "cpu_cores",
-                    "value": vm.get("cpunumber", ""),
-                    "description": "Number of CPU cores"
-                },
-                {
-                    "key": "cpu_speed",
-                    "value": vm.get("cpuspeed", ""),
-                    "description": "CPU speed"
-                },
-                {
-                    "key": "memory",
-                    "value": vm.get("memory", ""),
-                    "description": "RAM size"
-                },
-                {
-                    "key": "template",
-                    "value": vm.get("templatename", ""),
-                    "description": "Template name"
-                },
-                {
-                    "key": "project",
-                    "value": vm.get("project", ""),
-                    "description": "Project"
-                },
-                {
-                    "key": "account",
-                    "value": project['account'],
-                    "description": "Account"
-                },
-                {
-                    "key": "environment",
-                    "value": self.env,
-                    "description": "Cloudstack Region"
-                },
-                {
-                    "key": "creation_date",
-                    "value": self._parse_date(vm["created"]),
-                    "description": "Creation Date"
-                }
-            ]
+            "properties":  {
+                "uuid": vm.get("id", ""),
+                "state": vm.get("state", ""),
+                "host": vm.get("hostname", ""),
+                "zone": vm.get("zonename", ""),
+                "service_offering": vm.get("serviceofferingname", ""),
+                "cpu_cores": vm.get("cpunumber", ""),
+                "cpu_speed": vm.get("cpuspeed", ""),
+                "memory": vm.get("memory", ""),
+                "template": vm.get("templatename", ""),
+                "project": vm.get("project", ""),
+                "account": project['account'],
+                "environment": self.env,
+                "creation_date": self._parse_date(vm["created"]),
+            },
+            "properties_metadata": {
+                "uuid": {"description": "UUID"},
+                "state": {"description": "Power state"},
+                "host": {"description": "Host name"},
+                "zone": {"description": "Zone name"},
+                "service_offering": {"description": "Compute Offering"},
+                "cpu_cores": {"description": "Number of CPU cores"},
+                "cpu_speed": {"description": "CPU speed"},
+                "memory": {"description": "RAM size"},
+                "template": {"description": "Template name"},
+                "project": {"description": "Project"},
+                "account": {"description": "Account"},
+                "environment": {"description": "Cloudstack Region"},
+                "creation_date": {"description": "Creation Date"}
+            }
         }
 
     def _get_vm_id(self, msg):
