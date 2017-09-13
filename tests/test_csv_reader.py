@@ -15,7 +15,7 @@
 """
 import unittest
 from globomap_driver_acs.csv_reader import CsvReader
-from mock import patch, Mock
+from mock import patch
 
 
 class TestCsvReader(unittest.TestCase):
