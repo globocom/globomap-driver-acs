@@ -16,7 +16,8 @@ code passed on the driver constructor and the variable name.
 | ACS_$env_RMQ_PASSWORD       | Cloudstack RabbitMQ password    | password                                     |
 | ACS_$env_RMQ_PORT           | Cloudstack RabbitMQ port        | 5673 (default value)                         |
 | ACS_$env_RMQ_QUEUE          | Cloudstack RabbitMQ queue name  | events                                       |
-| ACS_$env_RMQ_LOADER_EXCHANGE| Cloudstack RabbitMQ Exchange    | cloudstack-globomap-loader                   |
+| ACS_$env_RMQ_EXCHANGE       | Cloudstack RabbitMQ Exchange    | cloudstack-events (default value)            |
+| ACS_$env_RMQ_LOADER_EXCHANGE| Cloudstack RabbitMQ Loader Exchange| cloudstack-globomap-loader                |
 | ACS_$env_RMQ_VIRTUAL_HOST   | Cloudstack RabbitMQ virtual host| /globomap                                    |
 | ACS_$env_PROJECT_ALLOCATION_FILE| Path to the project allocation CSV file| /path/to/file                     |
 

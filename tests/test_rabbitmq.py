@@ -117,6 +117,14 @@ class TestRabbitMQClient(unittest.TestCase):
         with self.assertRaises(StopIteration):
             rabbitmq.read_messages().next()
 
+    def test_bind_routing_keys(self):
+        pika_mock = self._mock_pika()
+        rabbitmq = RabbitMQClient(
+            'localhost', 5672, 'user', 'password', '/', 'queue_name')
+
+        rabbitmq.bind_routing_keys('cloudstack-events', ['a', 'b', 'c'])
+        self.assertEqual(3, pika_mock.queue_bind.call_count)
+
     def _mock_pika(self):
         pika_mock = patch('globomap_driver_acs.rabbitmq.pika').start()
 

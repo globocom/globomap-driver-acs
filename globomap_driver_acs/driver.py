@@ -46,6 +46,7 @@ class Cloudstack(object):
                 prj_allocation_file
             )
         self._connect_rabbit()
+        self._create_queue_binds()
 
     def _connect_rabbit(self):
         self.rabbitmq = RabbitMQClient(
@@ -56,6 +57,19 @@ class Cloudstack(object):
             vhost=self._get_setting("RMQ_VIRTUAL_HOST"),
             queue_name=self._get_setting("RMQ_QUEUE")
         )
+
+    def _create_queue_binds(self):
+        exchange = self._get_setting("RMQ_EXCHANGE", 'cloudstack-events')
+        self.rabbitmq.bind_routing_keys(exchange, [
+            'management-server.ActionEvent.'
+            'VM-UPGRADE.VirtualMachine.*',
+
+            'management-server.ResourceStateEvent.'
+            'FollowAgentPowerOnReport.VirtualMachine.*',
+
+            'management-server.UsageEvent.'
+            'VM-CREATE.com-cloud-vm-VirtualMachine.*'
+        ])
 
     def updates(self, number_messages=1):
         """Return list of updates"""

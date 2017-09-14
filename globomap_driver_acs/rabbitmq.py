@@ -67,3 +67,11 @@ class RabbitMQClient(object):
             body=message,
             mandatory=True,
         )
+
+    def bind_routing_keys(self, exchange, keys):
+        for key in keys:
+            self.channel.queue_bind(
+                exchange=exchange,
+                queue=self.queue_name,
+                routing_key=key
+            )
