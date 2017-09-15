@@ -71,44 +71,30 @@ class Cloudstack(object):
             'VM-CREATE.com-cloud-vm-VirtualMachine.*'
         ])
 
-    def updates(self, number_messages=1):
-        """Return list of updates"""
-        try:
-            return self._get_update(number_messages).next()
-        except StopIteration:
-            return []
-
-    def _get_update(self, number_messages=1):
+    def process_updates(self, callback):
         """
         Reads and processes messages from the Cloudstack event bus until
-        it finds the number of messages matching the 'number_messages'
-        parameter
+        there's no message left in the target queue. Only acks message if
+        processed successfully by the callback.
         """
-
-        updates = []
-        msg_count = 0
         while True:
+            delivery_tag = None
             try:
-                raw_msg = self.rabbitmq.get_message()
-
-                self.log.debug("Message received from queue: %s" % raw_msg)
+                raw_msg, delivery_tag = self.rabbitmq.get_message()
                 if raw_msg:
-                    updates += self._create_updates(raw_msg)
-                    msg_count += 1
+                    updates = self._create_updates(raw_msg)
+                    for update in updates:
+                        callback(update)
+
+                    self.rabbitmq.ack_message(delivery_tag)
                 else:
-                    break
-            except StopIteration:
-                if updates:
-                    yield updates
-                raise StopIteration
+                    return
             except ConnectionClosed:
                 self.log.error("Error connecting to RabbitMQ, reconnecting")
                 self._connect_rabbit()
-            else:
-                if msg_count >= number_messages:
-                    yield updates
-                    updates = []
-                    msg_count = 0
+            except:
+                self.rabbitmq.nack_message(delivery_tag)
+                raise
 
     def _create_updates(self, raw_msg):
         """

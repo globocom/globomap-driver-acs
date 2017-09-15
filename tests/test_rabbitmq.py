@@ -42,80 +42,17 @@ class TestRabbitMQClient(unittest.TestCase):
         self.assertIsNotNone(message)
         self.pika_mock.basic_get.assert_called_once_with('queue_name')
 
-    def test_read_messages(self):
-        msg = '{"action": "CREATE", "type": "comp_unit", "element": {}}'
-
-        self.pika_mock.basic_get.return_value = (MagicMock(), None, msg)
+    def test_ack_message(self):
         rabbitmq = RabbitMQClient('', '', '', '', '', 'queue_name')
 
-        for i in range(3):
-            msg_ret = rabbitmq.read_messages().next()
-            self.assertDictEqual(msg_ret[0], json.loads(msg))
+        rabbitmq.ack_message(1)
+        self.pika_mock.basic_ack.assert_called_once_with(1)
 
-    def test_read_two_messages(self):
+    def test_nack_message(self):
         rabbitmq = RabbitMQClient('', '', '', '', '', 'queue_name')
 
-        msgs = [
-            {'action': 'CREATE', 'type': 'comp_unit', 'element': {}},
-            {'action': 'CREATE', 'type': 'pool', 'element': {}}
-        ]
-        rabbitmq.get_message = Mock(side_effect=msgs)
-        msg_ret = rabbitmq.read_messages(2).next()
-
-        self.assertEqual(len(msg_ret), 2)
-        for i in range(2):
-            self.assertDictEqual(msg_ret[i], msgs[i])
-
-        with self.assertRaises(StopIteration):
-            rabbitmq.read_messages().next()
-
-    def test_read_tree_messages(self):
-        rabbitmq = RabbitMQClient('', '', '', '', '', 'queue_name')
-
-        msgs = [
-            {'action': 'CREATE', 'type': 'comp_unit', 'element': {}},
-            {'action': 'CREATE', 'type': 'pool', 'element': {}}
-        ]
-        rabbitmq.get_message = Mock(side_effect=msgs)
-        msg_ret = rabbitmq.read_messages(3).next()
-
-        self.assertEqual(len(msg_ret), 2)
-        for i in range(2):
-            self.assertDictEqual(msg_ret[i], msgs[i])
-
-        with self.assertRaises(StopIteration):
-            rabbitmq.read_messages().next()
-
-    def test_read_five_messages(self):
-        rabbitmq = RabbitMQClient('', '', '', '', '', 'queue_name')
-
-        msgs = [
-            {'action': 'CREATE', 'type': 'comp_unit', 'element': {}},
-            {'action': 'UPDATE', 'type': 'comp_unit', 'element': {}}
-        ]
-        rabbitmq.get_message = Mock(side_effect=msgs)
-        msg_ret = rabbitmq.read_messages(1).next()
-
-        self.assertEqual(len(msg_ret), 1)
-        self.assertDictEqual(msg_ret[0], msgs[0])
-
-        msg_ret = rabbitmq.read_messages(1).next()
-
-        self.assertEqual(len(msg_ret), 1)
-        self.assertDictEqual(msg_ret[0], msgs[1])
-
-        with self.assertRaises(StopIteration):
-            rabbitmq.read_messages().next()
-
-    def test_stop_read_messages(self):
-        pika_mock = self._mock_pika()
-        pika_mock.basic_get.return_value = (None, None, None)
-
-        rabbitmq = RabbitMQClient(
-            'localhost', 5672, 'user', 'password', '/', 'queue_name')
-
-        with self.assertRaises(StopIteration):
-            rabbitmq.read_messages().next()
+        rabbitmq.nack_message(1)
+        self.pika_mock.basic_nack.assert_called_once_with(1)
 
     def test_bind_routing_keys(self):
         pika_mock = self._mock_pika()

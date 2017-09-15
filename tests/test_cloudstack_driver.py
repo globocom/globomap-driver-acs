@@ -15,7 +15,7 @@
 """
 import hashlib
 import unittest
-from mock import patch, Mock
+from mock import patch, Mock, MagicMock
 from globomap_driver_acs.driver import Cloudstack
 from tests.util import open_json
 
@@ -151,27 +151,51 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertFalse(cloudstack_mock.get_virtual_machine.called)
         self.assertFalse(cloudstack_mock.get_project.called)
 
-    def test_get_updates(self):
-        self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
+    def test_process_updates(self):
+        rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
             open_json('tests/json/project.json')['project'][0]
         )
-        updates = self._create_driver().updates()
-        update = updates[0]
 
-        self.assertEqual(1, len(updates))
-        self.assertEquals("PATCH", update["action"])
-        self.assertEquals("comp_unit", update["collection"])
-        self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+        def callback(update):
+            self.assertEquals("PATCH", update["action"])
+            self.assertEquals("comp_unit", update["collection"])
+            self.assertEquals("collections", update["type"])
+            self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+
+        self._create_driver().process_updates(callback)
+
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
+        self.assertEqual(1, rabbit_client_mock.ack_message.call_count)
+        self.assertEqual(0, rabbit_client_mock.nack_message.call_count)
+
+    def test_get_updates_given_exception(self):
+        rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            open_json('tests/json/project.json')['project'][0]
+        )
+
+        def callback(update):
+            raise Exception()
+
+        with self.assertRaises(Exception):
+            self._create_driver().process_updates(callback)
+
+        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
+        self.assertTrue(cloudstack_mock.get_project.called)
+        self.assertEqual(0, rabbit_client_mock.ack_message.call_count)
+        self.assertEqual(1, rabbit_client_mock.nack_message.call_count)
 
     def test_get_updates_no_messages_found(self):
         self._mock_rabbitmq_client(None)
         self._mock_cloudstack_service(None, None)
-        self.assertEquals([], self._create_driver().updates())
+
+        def callback(update):
+            self.fail()
+        self._create_driver().process_updates(callback)
 
     def test_parse_date(self):
         self._mock_rabbitmq_client()
@@ -364,10 +388,10 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def _mock_rabbitmq_client(self, data=None):
         rabbit_mq_mock = patch("globomap_driver_acs.driver.RabbitMQClient").start()
-        read_messages_mock = Mock()
-        rabbit_mq_mock.return_value = read_messages_mock
-        read_messages_mock.get_message.return_value = data
-        return read_messages_mock
+        rabbit = MagicMock()
+        rabbit_mq_mock.return_value = rabbit
+        rabbit.get_message.side_effect = [(data, 1), (None, None)]
+        return rabbit
 
     def _mock_cloudstack_service(self, vm, project):
         patch('globomap_driver_acs.driver.CloudStackClient').start()
