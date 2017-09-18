@@ -330,6 +330,7 @@ class TestCloudstackDriver(unittest.TestCase):
         updates = []
         driver._create_business_service_update(updates, 'Project A', {'id': '123'})
         self.assertEqual(1, len(updates))
+        self.assertEqual(int, type(updates[0]['element']['timestamp']))
 
     def test_create_business_service_update_project_not_found(self):
         self._mock_rabbitmq_client()

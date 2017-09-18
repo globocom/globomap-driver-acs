@@ -207,7 +207,9 @@ class Cloudstack(object):
                     'id': hashlib.md5(business_service.lower()).hexdigest(),
                     'name': business_service,
                     'provider': 'globomap',
-                    'timestamp': datetime.datetime.now().timetuple(),
+                    'timestamp': int(
+                        time.mktime(datetime.datetime.now().timetuple())
+                    )
                 }
 
                 updates.append(self._create_update_document(
