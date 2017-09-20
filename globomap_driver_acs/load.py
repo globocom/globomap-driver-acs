@@ -47,7 +47,8 @@ class CloudstackDataLoader(object):
         self.log.info("%s projects found. Processing:" % len(projects))
 
         for project in projects:
-            self.log.info("Processing project %s" % project['name'])
+            prj_name = project.get('name', project.get('displaytext'))
+            self.log.info("Processing project %s" % prj_name)
             vms = acs_service.list_virtual_machines_by_project(project['id'])
             self.log.info("Creating %s VM events" % len(vms))
 

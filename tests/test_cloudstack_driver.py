@@ -363,7 +363,8 @@ class TestCloudstackDriver(unittest.TestCase):
         element = edge['element']
         business_service_hashed_name = hashlib.md5(service.lower()).hexdigest()
 
-        self.assertEqual('CREATE', edge['action'])
+        self.assertEqual('UPDATE', edge['action'])
+        self.assertEqual('globomap_1', edge['key'])
         self.assertEqual('business_service_comp_unit', edge['collection'])
         self.assertEqual('edges', edge['type'])
         self.assertEqual('1', element['id'])

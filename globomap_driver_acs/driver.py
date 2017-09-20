@@ -34,6 +34,7 @@ class Cloudstack(object):
     VM_UPGRADE_EVENT = "VM.UPGRADE"
     PATCH_ACTION = "PATCH"
     CREATE_ACTION = "CREATE"
+    UPDATE_ACTION = "UPDATE"
     KEY_TEMPLATE = "globomap_%s"
 
     def __init__(self, params):
@@ -206,7 +207,7 @@ class Cloudstack(object):
                 business_service_element = {
                     'id': hashlib.md5(business_service.lower()).hexdigest(),
                     'name': business_service,
-                    'provider': 'globomap',
+                    'provider': 'cmdb',
                     'timestamp': int(
                         time.mktime(datetime.datetime.now().timetuple())
                     )
@@ -241,7 +242,8 @@ class Cloudstack(object):
 
         collection = "{}_comp_unit".format(collection)
         return self._create_update_document(
-            self.CREATE_ACTION, collection, 'edges', edge
+            self.UPDATE_ACTION, collection, 'edges', edge,
+            self.KEY_TEMPLATE % comp_unit['id']
         )
 
     def _create_update_document(self, action, collection,
