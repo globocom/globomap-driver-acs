@@ -180,7 +180,7 @@ class Cloudstack(object):
         }
 
     def _get_vm_id(self, msg):
-        if msg.get("event") is self.VM_UPGRADE_EVENT:
+        if msg.get("event") == self.VM_UPGRADE_EVENT:
             return msg.get("entityuuid")
         else:
             return msg.get("id")
