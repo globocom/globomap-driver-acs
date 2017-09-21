@@ -32,6 +32,7 @@ class Cloudstack(object):
 
     VM_CREATE_EVENT = "VM.CREATE"
     VM_UPGRADE_EVENT = "VM.UPGRADE"
+    VM_DELETE_EVENT = "VM.DESTROY"
     PATCH_ACTION = "PATCH"
     CREATE_ACTION = "CREATE"
     UPDATE_ACTION = "UPDATE"
@@ -70,7 +71,10 @@ class Cloudstack(object):
             'FollowAgentPowerOnReport.VirtualMachine.*',
 
             'management-server.UsageEvent.'
-            'VM-CREATE.com-cloud-vm-VirtualMachine.*'
+            'VM-CREATE.com-cloud-vm-VirtualMachine.*',
+
+            'management-server.UsageEvent.'
+            'VM-DESTROY.com-cloud-vm-VirtualMachine.*'
         ])
 
     def process_updates(self, callback):
@@ -105,50 +109,47 @@ class Cloudstack(object):
         virtual machines also creates edges documents so the VM can be
         linked to it's client business service and business process
         """
-
         updates = []
-        is_create = self._is_vm_create_event(raw_msg)
-        is_upgrade = self._is_vm_upgrade_event(raw_msg)
-        is_power_state_change = self._is_vm_power_state_event(raw_msg)
 
-        if is_create or is_upgrade or is_power_state_change:
+        if self.is_vm_update_event(raw_msg):
             cloudstack_service = self._get_cloudstack_service()
-
-            vm = cloudstack_service.get_virtual_machine(
-                self._get_vm_id(raw_msg)
-            )
+            vm_id = self._get_vm_id(raw_msg)
+            vm = cloudstack_service.get_virtual_machine(vm_id)
 
             if vm:
                 self.log.debug("Creating updates for event: %s" % raw_msg)
-
                 project = cloudstack_service.get_project(vm["projectid"])
-                hostname = vm.get('hostname')
+                self._create_vm_updates(updates, raw_msg, project, vm)
 
-                comp_unit = self._format_comp_unit_document(
-                    vm, project, raw_msg["eventDateTime"]
-                )
-
-                vm_update_document = self._create_update_document(
-                    self.PATCH_ACTION, "comp_unit", "collections",
-                    comp_unit, self.KEY_TEMPLATE % comp_unit['id']
-                )
-
-                updates.append(vm_update_document)
-                self._create_host_update(updates, comp_unit, hostname)
-
-                if self.project_allocations and is_create:
-                    self._create_process_update(
-                        updates, comp_unit)
-                    self._create_client_update(
-                        updates, project['name'], comp_unit)
-                    self._create_business_service_update(
-                        updates, project['name'], comp_unit)
+        elif self._is_vm_delete_event(raw_msg):
+            self.log.debug("Creating cleanup updates for event: %s" % raw_msg)
+            self._create_vm_cleanup_updates(updates, raw_msg)
 
         return updates
 
-    def _format_comp_unit_document(self, vm, project, event_date=None):
+    def _create_vm_updates(self, updates, raw_msg, project, vm):
+        hostname = vm.get('hostname')
+        comp_unit = self._format_comp_unit_document(
+            project, vm, raw_msg["eventDateTime"]
+        )
+        vm_update_document = self._create_update_document(
+            self.PATCH_ACTION, "comp_unit", "collections",
+            comp_unit, self.KEY_TEMPLATE % comp_unit['id']
+        )
+        updates.append(vm_update_document)
+        self._create_host_update(updates, comp_unit, hostname)
+
+        if self.project_allocations and self._is_vm_create_event(raw_msg):
+            self._create_process_update(
+                updates, comp_unit)
+            self._create_client_update(
+                updates, project['name'], comp_unit)
+            self._create_business_service_update(
+                updates, project['name'], comp_unit)
+
+    def _format_comp_unit_document(self, project, vm, event_date=None):
         return {
-            "id": "vm-%s" % vm["id"],
+            "id": self._make_comp_unit_id(vm['id']),
             "name": vm["name"],
             "timestamp": self._parse_date(event_date),
             "provider": "globomap",
@@ -184,11 +185,38 @@ class Cloudstack(object):
             }
         }
 
+    def _create_vm_cleanup_updates(self, updates, raw_msg):
+        comp_unit_id = self._make_comp_unit_id(self._get_vm_id(raw_msg))
+        key = self.KEY_TEMPLATE % comp_unit_id
+        vm_delete_document = self._create_delete_document(
+            "comp_unit", "collections", key
+        )
+        host_link_delete = self._create_delete_document(
+            "host_comp_unit", "edges", key
+        )
+        process_link_delete = self._create_delete_document(
+            "business_process_comp_unit", "edges", key
+        )
+        service_link_delete = self._create_delete_document(
+            "business_service_comp_unit", "edges", key
+        )
+        client_link_delete = self._create_delete_document(
+            "client_comp_unit", "edges", key
+        )
+        updates.append(vm_delete_document)
+        updates.append(host_link_delete)
+        updates.append(process_link_delete)
+        updates.append(service_link_delete)
+        updates.append(client_link_delete)
+
     def _get_vm_id(self, msg):
         if msg.get("event") == self.VM_UPGRADE_EVENT:
             return msg.get("entityuuid")
         else:
             return msg.get("id")
+
+    def _make_comp_unit_id(self, vm_id):
+        return "vm-{}".format(vm_id)
 
     def _create_process_update(self, updates, comp_unit):
         process = "Processamento de Dados em Modelo Virtual"
@@ -294,6 +322,15 @@ class Cloudstack(object):
             update['key'] = key
         return update
 
+    def _create_delete_document(self, collection, type, key):
+        return {
+            "action": self.DELETE_ACTION,
+            "collection": collection,
+            "type": type,
+            "element": {},
+            "key": key
+        }
+
     def _read_project_allocation_file(self, file_path):
         """
         Reads in a given path a CSV file describing which business
@@ -302,7 +339,6 @@ class Cloudstack(object):
         <account>,<project>,<account_project>,<client>,<business_service>,
         The second, fourth and fifth fields are considered by this code
         """
-
         lines = CsvReader(file_path, ',').get_lines()
         project_allocations = dict()
 
@@ -316,8 +352,19 @@ class Cloudstack(object):
                 }
         return project_allocations
 
+    def is_vm_update_event(self, raw_msg):
+        is_create = self._is_vm_create_event(raw_msg)
+        is_upgrade = self._is_vm_upgrade_event(raw_msg)
+        is_power_state_change = self._is_vm_power_state_event(raw_msg)
+        return is_create or is_power_state_change or is_upgrade
+
     def _is_vm_create_event(self, msg):
         is_create_event = msg.get("event") == self.VM_CREATE_EVENT
+        is_vm_resource = msg.get("resource") == "com.cloud.vm.VirtualMachine"
+        return is_create_event and is_vm_resource
+
+    def _is_vm_delete_event(self, msg):
+        is_create_event = msg.get("event") == self.VM_DELETE_EVENT
         is_vm_resource = msg.get("resource") == "com.cloud.vm.VirtualMachine"
         return is_create_event and is_vm_resource
 
