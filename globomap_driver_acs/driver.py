@@ -35,6 +35,7 @@ class Cloudstack(object):
     PATCH_ACTION = "PATCH"
     CREATE_ACTION = "CREATE"
     UPDATE_ACTION = "UPDATE"
+    DELETE_ACTION = "DELETE"
     KEY_TEMPLATE = "globomap_%s"
 
     def __init__(self, params):
@@ -121,6 +122,7 @@ class Cloudstack(object):
                 self.log.debug("Creating updates for event: %s" % raw_msg)
 
                 project = cloudstack_service.get_project(vm["projectid"])
+                hostname = vm.get('hostname')
 
                 comp_unit = self._format_comp_unit_document(
                     vm, project, raw_msg["eventDateTime"]
@@ -132,8 +134,11 @@ class Cloudstack(object):
                 )
 
                 updates.append(vm_update_document)
+                self._create_host_update(updates, comp_unit, hostname)
+
                 if self.project_allocations and is_create:
-                    self._create_process_update(updates, comp_unit)
+                    self._create_process_update(
+                        updates, comp_unit)
                     self._create_client_update(
                         updates, project['name'], comp_unit)
                     self._create_business_service_update(
@@ -187,9 +192,15 @@ class Cloudstack(object):
 
     def _create_process_update(self, updates, comp_unit):
         process = "Processamento de Dados em Modelo Virtual"
-        updates.append(self._create_edge(
-            'business_process', comp_unit, process
-        ))
+
+        name_md5 = hashlib.md5(process.lower()).hexdigest()
+        edge = self._create_edge(
+            comp_unit['id'],
+            'business_process_comp_unit',
+            'business_process/cmdb_{}'.format(name_md5),
+            'comp_unit/globomap_{}'.format(comp_unit['id'])
+        )
+        updates.append(edge)
 
     def _create_business_service_update(self, updates, prj_name, comp_unit):
         """
@@ -219,31 +230,56 @@ class Cloudstack(object):
                     self.KEY_TEMPLATE % business_service_element['id']
                 ))
 
-            updates.append(self._create_edge(
-                'business_service', comp_unit, business_service
-            ))
+            name_md5 = hashlib.md5(
+                allocation['business_service'].lower()).hexdigest()
+            edge = self._create_edge(
+                comp_unit['id'],
+                'business_service_comp_unit',
+                'business_service/cmdb_{}'.format(name_md5),
+                'comp_unit/globomap_{}'.format(comp_unit['id'])
+            )
+            updates.append(edge)
 
     def _create_client_update(self, updates, project_name, comp_unit):
         allocation = self.project_allocations.get(project_name)
         if allocation:
-            updates.append(self._create_edge(
-                'client', comp_unit, allocation['client']
-            ))
+            name_md5 = hashlib.md5(allocation['client'].lower()).hexdigest()
+            edge = self._create_edge(
+                comp_unit['id'],
+                'client_comp_unit',
+                'client/cmdb_{}'.format(name_md5),
+                'comp_unit/globomap_{}'.format(comp_unit['id'])
+            )
+            updates.append(edge)
 
-    def _create_edge(self, collection, comp_unit, edge_from):
-        edge_from = hashlib.md5(edge_from.lower()).hexdigest()
+    def _create_host_update(self, updates, comp_unit, hostname):
+        if hostname:
+            edge = self._create_edge(
+                comp_unit['id'],
+                'host_comp_unit',
+                'comp_unit/cmdb_{}'.format(hostname),
+                'comp_unit/globomap_{}'.format(comp_unit['id'])
+            )
+            updates.append(edge)
+        else:
+            delete_edge = self._create_update_document(
+                self.DELETE_ACTION, 'host_comp_unit', 'edges', {},
+                self.KEY_TEMPLATE % comp_unit['id']
+            )
+            updates.append(delete_edge)
+
+    def _create_edge(self, id, collection, from_key, to_key):
+        timestamp = int(time.mktime(datetime.datetime.now().timetuple()))
         edge = {
-            'id': comp_unit['id'],
+            'id': id,
             'provider': 'globomap',
-            'timestamp': int(time.mktime(datetime.datetime.now().timetuple())),
-            'from': '{}/cmdb_{}'.format(collection, edge_from),
-            'to': 'comp_unit/globomap_{}'.format(comp_unit['id'])
+            'timestamp': timestamp,
+            'from': from_key,
+            'to': to_key
         }
-
-        collection = "{}_comp_unit".format(collection)
         return self._create_update_document(
             self.UPDATE_ACTION, collection, 'edges', edge,
-            self.KEY_TEMPLATE % comp_unit['id']
+            self.KEY_TEMPLATE % id
         )
 
     def _create_update_document(self, action, collection,

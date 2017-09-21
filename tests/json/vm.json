@@ -29,7 +29,8 @@
       "projectid": "1",
       "serviceofferingname": "e2.micro",
       "templatename": "RedHat 7 OFICIAL",
-      "zonename": "zone_name"
+      "zonename": "zone_name",
+      "hostname": "hostname"
     }
   ]
 }

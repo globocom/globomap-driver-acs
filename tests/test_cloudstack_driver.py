@@ -159,10 +159,16 @@ class TestCloudstackDriver(unittest.TestCase):
         )
 
         def callback(update):
-            self.assertEquals("PATCH", update["action"])
-            self.assertEquals("comp_unit", update["collection"])
-            self.assertEquals("collections", update["type"])
-            self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+            if update['action'] == 'PATCH':
+                self.assertEquals("comp_unit", update["collection"])
+                self.assertEquals("collections", update["type"])
+                self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+            elif update['action'] == 'UPDATE':
+                self.assertEquals("host_comp_unit", update["collection"])
+                self.assertEquals("edges", update["type"])
+                self.assertEquals("globomap_vm-9a140a96-b304-4512-8114-f33cfd6a875c", update["key"])
+            else:
+                self.fail()
 
         self._create_driver().process_updates(callback)
 
@@ -303,6 +309,15 @@ class TestCloudstackDriver(unittest.TestCase):
         updates = []
         driver._create_process_update(updates, {'id': '123'})
         self.assertEqual(1, len(updates))
+        element = updates[0]['element']
+
+        self.assertEqual('UPDATE', updates[0]['action'])
+        self.assertEqual('globomap_123', updates[0]['key'])
+        self.assertEqual('business_process_comp_unit', updates[0]['collection'])
+        self.assertEqual('business_process/cmdb_0ec36d34c29a41d20e7a46cb2df5496d', element['from'])
+        self.assertEqual('comp_unit/globomap_123', element['to'])
+        self.assertEqual('globomap', element['provider'])
+        self.assertEqual('123', element['id'])
 
     def test_create_client_update(self):
         self._mock_rabbitmq_client()
@@ -311,7 +326,16 @@ class TestCloudstackDriver(unittest.TestCase):
 
         updates = []
         driver._create_client_update(updates, 'Project A', {'id': '123'})
+        element = updates[0]['element']
+
         self.assertEqual(1, len(updates))
+        self.assertEqual('UPDATE', updates[0]['action'])
+        self.assertEqual('globomap_123', updates[0]['key'])
+        self.assertEqual('client_comp_unit', updates[0]['collection'])
+        self.assertEqual('client/cmdb_52f9a5a8b555566736b9301146bbeca4', element['from'])
+        self.assertEqual('comp_unit/globomap_123', element['to'])
+        self.assertEqual('globomap', element['provider'])
+        self.assertEqual('123', element['id'])
 
     def test_create_client_update_given_project_not_found(self):
         self._mock_rabbitmq_client()
@@ -329,8 +353,17 @@ class TestCloudstackDriver(unittest.TestCase):
 
         updates = []
         driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        element = updates[0]['element']
+
         self.assertEqual(1, len(updates))
-        self.assertEqual(int, type(updates[0]['element']['timestamp']))
+        self.assertEqual('UPDATE', updates[0]['action'])
+        self.assertEqual(int, type(element['timestamp']))
+        self.assertEqual('globomap_123', updates[0]['key'])
+        self.assertEqual('business_service_comp_unit', updates[0]['collection'])
+        self.assertEqual('business_service/cmdb_1a42f074c094482d21b91c74ea271f01', element['from'])
+        self.assertEqual('comp_unit/globomap_123', element['to'])
+        self.assertEqual('globomap', element['provider'])
+        self.assertEqual('123', element['id'])
 
     def test_create_business_service_update_project_not_found(self):
         self._mock_rabbitmq_client()
@@ -354,15 +387,48 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEqual('business_service', business_service_creation['collection'])
         self.assertEqual('collections', business_service_creation['type'])
 
+    def test_create_host_update(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        updates = []
+        driver._create_host_update(updates, {'id': '123'}, 'hostname')
+        element = updates[0]['element']
+
+        self.assertEqual(1, len(updates))
+        self.assertEqual('UPDATE', updates[0]['action'])
+        self.assertEqual('globomap_123', updates[0]['key'])
+        self.assertEqual('host_comp_unit', updates[0]['collection'])
+        self.assertEqual('comp_unit/cmdb_hostname', element['from'])
+        self.assertEqual('comp_unit/globomap_123', element['to'])
+        self.assertEqual('globomap', element['provider'])
+        self.assertEqual('123', element['id'])
+
+    def test_create_host_update_given_vm_with_no_host(self):
+        self._mock_rabbitmq_client()
+        driver = self._create_driver()
+
+        updates = []
+        driver._create_host_update(updates, {'id': '123'}, '')
+
+        self.assertEqual(1, len(updates))
+        self.assertEqual('DELETE', updates[0]['action'])
+        self.assertEqual('globomap_123', updates[0]['key'])
+        self.assertEqual('host_comp_unit', updates[0]['collection'])
+
     def test_create_edge(self):
         self._mock_rabbitmq_client()
         driver = self._create_driver()
 
-        service = 'Business Service A'
-        edge = driver._create_edge('business_service', {'id': '1'}, service)
-        element = edge['element']
-        business_service_hashed_name = hashlib.md5(service.lower()).hexdigest()
+        service = hashlib.md5('Business Service A'.lower()).hexdigest()
+        edge = driver._create_edge(
+            '1',
+            'business_service_comp_unit',
+            'business_service/cmdb_%s' % service,
+            'comp_unit/globomap_1'
+        )
 
+        element = edge['element']
         self.assertEqual('UPDATE', edge['action'])
         self.assertEqual('globomap_1', edge['key'])
         self.assertEqual('business_service_comp_unit', edge['collection'])
@@ -371,7 +437,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEqual('globomap', element['provider'])
         self.assertIsNotNone(element['timestamp'])
         self.assertEqual(int, type(element['timestamp']))
-        self.assertEqual('business_service/cmdb_%s' % business_service_hashed_name, element['from'])
+        self.assertEqual('business_service/cmdb_%s' % service, element['from'])
         self.assertEqual('comp_unit/globomap_1', element['to'])
 
     def test_create_update_document(self):
