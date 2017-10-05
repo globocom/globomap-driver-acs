@@ -73,6 +73,9 @@ class Cloudstack(object):
             'management-server.ResourceStateEvent.'
             'FollowAgentPowerOnReport.VirtualMachine.*',
 
+            'management-server.ResourceStateEvent.'
+            'OperationSucceeded.VirtualMachine.*',
+
             'management-server.UsageEvent.'
             'VM-CREATE.com-cloud-vm-VirtualMachine.*',
 
