@@ -214,6 +214,24 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEqual(1, rabbit_client_mock.ack_message.call_count)
         self.assertEqual(0, rabbit_client_mock.nack_message.call_count)
 
+    def test_process_updates_given_vm_without_project(self):
+        rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
+        cloudstack_mock = self._mock_cloudstack_service(
+            open_json('tests/json/vm.json')['virtualmachine'][0], None
+        )
+
+        def callback(update):
+            print update["element"]
+            if update['action'] == 'PATCH':
+                self.assertIsNone(update["element"]["properties"]['project'])
+
+        self._create_driver().process_updates(callback)
+
+        self.assertTrue(cloudstack_mock.get_virtual_machine.called)
+        self.assertTrue(cloudstack_mock.get_project.called)
+        self.assertEqual(1, rabbit_client_mock.ack_message.call_count)
+        self.assertEqual(0, rabbit_client_mock.nack_message.call_count)
+
     def test_get_updates_given_exception(self):
         rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
         cloudstack_mock = self._mock_cloudstack_service(
@@ -456,7 +474,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEqual('UPDATE', updates[0]['action'])
         self.assertEqual('globomap_123', updates[0]['key'])
         self.assertEqual('host_comp_unit', updates[0]['collection'])
-        self.assertEqual('comp_unit/cmdb_hostname', element['from'])
+        self.assertEqual('comp_unit/globomap_hostname', element['from'])
         self.assertEqual('comp_unit/globomap_123', element['to'])
         self.assertEqual('globomap', element['provider'])
         self.assertEqual('123', element['id'])

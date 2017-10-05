@@ -122,6 +122,8 @@ class Cloudstack(object):
             if vm:
                 self.log.debug('Creating updates for event: %s' % raw_msg)
                 project = cloudstack_service.get_project(vm['projectid'])
+                if not project:
+                    project = dict()
                 self._create_vm_updates(updates, raw_msg, project, vm)
 
         elif self._is_vm_delete_event(raw_msg):
@@ -146,9 +148,9 @@ class Cloudstack(object):
             self._create_process_update(
                 updates, comp_unit)
             self._create_client_update(
-                updates, project['name'], comp_unit)
+                updates, project.get('name'), comp_unit)
             self._create_business_service_update(
-                updates, project['name'], comp_unit)
+                updates, project.get('name'), comp_unit)
 
     def _format_comp_unit_document(self, project, vm, event_date=None):
         return {
@@ -166,8 +168,8 @@ class Cloudstack(object):
                 'cpu_speed': vm.get('cpuspeed', ''),
                 'memory': vm.get('memory', ''),
                 'template': vm.get('templatename', ''),
-                'project': vm.get('project', ''),
-                'account': project['account'],
+                'project': project.get('name'),
+                'account': project.get('account', vm.get('account')),
                 'environment': self.env,
                 'creation_date': self._parse_date(vm['created']),
             },
