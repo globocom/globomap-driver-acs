@@ -13,36 +13,39 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-import hashlib
-import re
-import logging
-import time
 import datetime
+import hashlib
+import logging
+import re
+import time
+
+from cloudstack import CloudStackClient
+from cloudstack import CloudstackService
 from dateutil.parser import parse
 from pika.exceptions import ConnectionClosed
-from cloudstack import CloudStackClient, CloudstackService
-from globomap_driver_acs.csv_reader import CsvReader
 from rabbitmq import RabbitMQClient
 from settings import get_setting
+
+from globomap_driver_acs.csv_reader import CsvReader
 
 
 class Cloudstack(object):
 
     log = logging.getLogger(__name__)
 
-    VM_CREATE_EVENT = "VM.CREATE"
-    VM_UPGRADE_EVENT = "VM.UPGRADE"
-    VM_DELETE_EVENT = "VM.DESTROY"
-    PATCH_ACTION = "PATCH"
-    CREATE_ACTION = "CREATE"
-    UPDATE_ACTION = "UPDATE"
-    DELETE_ACTION = "DELETE"
-    KEY_TEMPLATE = "globomap_%s"
+    VM_CREATE_EVENT = 'VM.CREATE'
+    VM_UPGRADE_EVENT = 'VM.UPGRADE'
+    VM_DELETE_EVENT = 'VM.DESTROY'
+    PATCH_ACTION = 'PATCH'
+    CREATE_ACTION = 'CREATE'
+    UPDATE_ACTION = 'UPDATE'
+    DELETE_ACTION = 'DELETE'
+    KEY_TEMPLATE = 'globomap_%s'
 
     def __init__(self, params):
         self.env = params.get('env')
 
-        prj_allocation_file = self._get_setting("PROJECT_ALLOCATION_FILE")
+        prj_allocation_file = self._get_setting('PROJECT_ALLOCATION_FILE')
         self.project_allocations = dict()
         if prj_allocation_file:
             self.project_allocations = self._read_project_allocation_file(
@@ -53,16 +56,16 @@ class Cloudstack(object):
 
     def _connect_rabbit(self):
         self.rabbitmq = RabbitMQClient(
-            host=self._get_setting("RMQ_HOST"),
-            port=int(self._get_setting("RMQ_PORT", 5672)),
-            user=self._get_setting("RMQ_USER"),
-            password=self._get_setting("RMQ_PASSWORD"),
-            vhost=self._get_setting("RMQ_VIRTUAL_HOST"),
-            queue_name=self._get_setting("RMQ_QUEUE")
+            host=self._get_setting('RMQ_HOST'),
+            port=int(self._get_setting('RMQ_PORT', 5672)),
+            user=self._get_setting('RMQ_USER'),
+            password=self._get_setting('RMQ_PASSWORD'),
+            vhost=self._get_setting('RMQ_VIRTUAL_HOST'),
+            queue_name=self._get_setting('RMQ_QUEUE')
         )
 
     def _create_queue_binds(self):
-        exchange = self._get_setting("RMQ_EXCHANGE", 'cloudstack-events')
+        exchange = self._get_setting('RMQ_EXCHANGE', 'cloudstack-events')
         self.rabbitmq.bind_routing_keys(exchange, [
             'management-server.ActionEvent.'
             'VM-UPGRADE.VirtualMachine.*',
@@ -96,7 +99,7 @@ class Cloudstack(object):
                 else:
                     return
             except ConnectionClosed:
-                self.log.error("Error connecting to RabbitMQ, reconnecting")
+                self.log.error('Error connecting to RabbitMQ, reconnecting')
                 self._connect_rabbit()
             except:
                 self.rabbitmq.nack_message(delivery_tag)
@@ -117,12 +120,12 @@ class Cloudstack(object):
             vm = cloudstack_service.get_virtual_machine(vm_id)
 
             if vm:
-                self.log.debug("Creating updates for event: %s" % raw_msg)
-                project = cloudstack_service.get_project(vm["projectid"])
+                self.log.debug('Creating updates for event: %s' % raw_msg)
+                project = cloudstack_service.get_project(vm['projectid'])
                 self._create_vm_updates(updates, raw_msg, project, vm)
 
         elif self._is_vm_delete_event(raw_msg):
-            self.log.debug("Creating cleanup updates for event: %s" % raw_msg)
+            self.log.debug('Creating cleanup updates for event: %s' % raw_msg)
             self._create_vm_cleanup_updates(updates, raw_msg)
 
         return updates
@@ -130,10 +133,10 @@ class Cloudstack(object):
     def _create_vm_updates(self, updates, raw_msg, project, vm):
         hostname = vm.get('hostname')
         comp_unit = self._format_comp_unit_document(
-            project, vm, raw_msg["eventDateTime"]
+            project, vm, raw_msg['eventDateTime']
         )
         vm_update_document = self._create_update_document(
-            self.PATCH_ACTION, "comp_unit", "collections",
+            self.PATCH_ACTION, 'comp_unit', 'collections',
             comp_unit, self.KEY_TEMPLATE % comp_unit['id']
         )
         updates.append(vm_update_document)
@@ -149,39 +152,39 @@ class Cloudstack(object):
 
     def _format_comp_unit_document(self, project, vm, event_date=None):
         return {
-            "id": self._make_comp_unit_id(vm['id']),
-            "name": vm["name"],
-            "timestamp": self._parse_date(event_date),
-            "provider": "globomap",
-            "properties":  {
-                "uuid": vm.get("id", ""),
-                "state": vm.get("state", ""),
-                "host": vm.get("hostname", ""),
-                "zone": vm.get("zonename", ""),
-                "service_offering": vm.get("serviceofferingname", ""),
-                "cpu_cores": vm.get("cpunumber", ""),
-                "cpu_speed": vm.get("cpuspeed", ""),
-                "memory": vm.get("memory", ""),
-                "template": vm.get("templatename", ""),
-                "project": vm.get("project", ""),
-                "account": project['account'],
-                "environment": self.env,
-                "creation_date": self._parse_date(vm["created"]),
+            'id': self._make_comp_unit_id(vm['id']),
+            'name': vm['name'],
+            'timestamp': self._parse_date(event_date),
+            'provider': 'globomap',
+            'properties': {
+                'uuid': vm.get('id', ''),
+                'state': vm.get('state', ''),
+                'host': vm.get('hostname', ''),
+                'zone': vm.get('zonename', ''),
+                'service_offering': vm.get('serviceofferingname', ''),
+                'cpu_cores': vm.get('cpunumber', ''),
+                'cpu_speed': vm.get('cpuspeed', ''),
+                'memory': vm.get('memory', ''),
+                'template': vm.get('templatename', ''),
+                'project': vm.get('project', ''),
+                'account': project['account'],
+                'environment': self.env,
+                'creation_date': self._parse_date(vm['created']),
             },
-            "properties_metadata": {
-                "uuid": {"description": "UUID"},
-                "state": {"description": "Power state"},
-                "host": {"description": "Host name"},
-                "zone": {"description": "Zone name"},
-                "service_offering": {"description": "Compute Offering"},
-                "cpu_cores": {"description": "Number of CPU cores"},
-                "cpu_speed": {"description": "CPU speed"},
-                "memory": {"description": "RAM size"},
-                "template": {"description": "Template name"},
-                "project": {"description": "Project"},
-                "account": {"description": "Account"},
-                "environment": {"description": "Cloudstack Region"},
-                "creation_date": {"description": "Creation Date"}
+            'properties_metadata': {
+                'uuid': {'description': 'UUID'},
+                'state': {'description': 'Power state'},
+                'host': {'description': 'Host name'},
+                'zone': {'description': 'Zone name'},
+                'service_offering': {'description': 'Compute Offering'},
+                'cpu_cores': {'description': 'Number of CPU cores'},
+                'cpu_speed': {'description': 'CPU speed'},
+                'memory': {'description': 'RAM size'},
+                'template': {'description': 'Template name'},
+                'project': {'description': 'Project'},
+                'account': {'description': 'Account'},
+                'environment': {'description': 'Cloudstack Region'},
+                'creation_date': {'description': 'Creation Date'}
             }
         }
 
@@ -189,19 +192,19 @@ class Cloudstack(object):
         comp_unit_id = self._make_comp_unit_id(self._get_vm_id(raw_msg))
         key = self.KEY_TEMPLATE % comp_unit_id
         vm_delete_document = self._create_delete_document(
-            "comp_unit", "collections", key
+            'comp_unit', 'collections', key
         )
         host_link_delete = self._create_delete_document(
-            "host_comp_unit", "edges", key
+            'host_comp_unit', 'edges', key
         )
         process_link_delete = self._create_delete_document(
-            "business_process_comp_unit", "edges", key
+            'business_process_comp_unit', 'edges', key
         )
         service_link_delete = self._create_delete_document(
-            "business_service_comp_unit", "edges", key
+            'business_service_comp_unit', 'edges', key
         )
         client_link_delete = self._create_delete_document(
-            "client_comp_unit", "edges", key
+            'client_comp_unit', 'edges', key
         )
         updates.append(vm_delete_document)
         updates.append(host_link_delete)
@@ -210,16 +213,16 @@ class Cloudstack(object):
         updates.append(client_link_delete)
 
     def _get_vm_id(self, msg):
-        if msg.get("event") == self.VM_UPGRADE_EVENT:
-            return msg.get("entityuuid")
+        if msg.get('event') == self.VM_UPGRADE_EVENT:
+            return msg.get('entityuuid')
         else:
-            return msg.get("id")
+            return msg.get('id')
 
     def _make_comp_unit_id(self, vm_id):
-        return "vm-{}".format(vm_id)
+        return 'vm-{}'.format(vm_id)
 
     def _create_process_update(self, updates, comp_unit):
-        process = "Processamento de Dados em Modelo Virtual"
+        process = 'Processamento de Dados em Modelo Virtual'
 
         name_md5 = hashlib.md5(process.lower()).hexdigest()
         edge = self._create_edge(
@@ -253,7 +256,7 @@ class Cloudstack(object):
                 }
 
                 updates.append(self._create_update_document(
-                    self.PATCH_ACTION, "business_service", "collections",
+                    self.PATCH_ACTION, 'business_service', 'collections',
                     business_service_element,
                     self.KEY_TEMPLATE % business_service_element['id']
                 ))
@@ -285,7 +288,7 @@ class Cloudstack(object):
             edge = self._create_edge(
                 comp_unit['id'],
                 'host_comp_unit',
-                'comp_unit/cmdb_{}'.format(hostname),
+                'comp_unit/globomap_{}'.format(hostname),
                 'comp_unit/globomap_{}'.format(comp_unit['id'])
             )
             updates.append(edge)
@@ -313,10 +316,10 @@ class Cloudstack(object):
     def _create_update_document(self, action, collection,
                                 type, element, key=None):
         update = {
-            "action": action,
-            "collection": collection,
-            "type": type,
-            "element": element
+            'action': action,
+            'collection': collection,
+            'type': type,
+            'element': element
         }
         if key:
             update['key'] = key
@@ -324,11 +327,11 @@ class Cloudstack(object):
 
     def _create_delete_document(self, collection, type, key):
         return {
-            "action": self.DELETE_ACTION,
-            "collection": collection,
-            "type": type,
-            "element": {},
-            "key": key
+            'action': self.DELETE_ACTION,
+            'collection': collection,
+            'type': type,
+            'element': {},
+            'key': key
         }
 
     def _read_project_allocation_file(self, file_path):
@@ -348,7 +351,7 @@ class Cloudstack(object):
             client = line[3]
             if business_service_name and client:
                 project_allocations[project_name] = {
-                    "business_service": business_service_name, "client": client
+                    'business_service': business_service_name, 'client': client
                 }
         return project_allocations
 
@@ -359,23 +362,23 @@ class Cloudstack(object):
         return is_create or is_power_state_change or is_upgrade
 
     def _is_vm_create_event(self, msg):
-        is_create_event = msg.get("event") == self.VM_CREATE_EVENT
-        is_vm_resource = msg.get("resource") == "com.cloud.vm.VirtualMachine"
+        is_create_event = msg.get('event') == self.VM_CREATE_EVENT
+        is_vm_resource = msg.get('resource') == 'com.cloud.vm.VirtualMachine'
         return is_create_event and is_vm_resource
 
     def _is_vm_delete_event(self, msg):
-        is_create_event = msg.get("event") == self.VM_DELETE_EVENT
-        is_vm_resource = msg.get("resource") == "com.cloud.vm.VirtualMachine"
+        is_create_event = msg.get('event') == self.VM_DELETE_EVENT
+        is_vm_resource = msg.get('resource') == 'com.cloud.vm.VirtualMachine'
         return is_create_event and is_vm_resource
 
     def _is_vm_upgrade_event(self, msg):
-        is_vm_upgrade_event = msg.get("event") == self.VM_UPGRADE_EVENT
-        is_event_complete = msg.get("status") == "Completed"
+        is_vm_upgrade_event = msg.get('event') == self.VM_UPGRADE_EVENT
+        is_event_complete = msg.get('status') == 'Completed'
         return is_vm_upgrade_event and is_event_complete
 
     def _is_vm_power_state_event(self, msg):
-        is_vm_upgrade_event = msg.get("resource") == "VirtualMachine"
-        is_event_complete = msg.get("status") == "postStateTransitionEvent"
+        is_vm_upgrade_event = msg.get('resource') == 'VirtualMachine'
+        is_event_complete = msg.get('status') == 'postStateTransitionEvent'
         return is_vm_upgrade_event and is_event_complete
 
     def _parse_date(self, event_time):
@@ -387,9 +390,9 @@ class Cloudstack(object):
 
     def _get_cloudstack_service(self):
         acs_client = CloudStackClient(
-             self._get_setting("API_URL"),
-             self._get_setting("API_KEY"),
-             self._get_setting("API_SECRET_KEY"), True
+            self._get_setting('API_URL'),
+            self._get_setting('API_KEY'),
+            self._get_setting('API_SECRET_KEY'), True
         )
         return CloudstackService(acs_client)
 
