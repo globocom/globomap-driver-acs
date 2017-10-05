@@ -26,6 +26,7 @@
         }
       ],
       "project": "project_name",
+      "account": "account",
       "projectid": "1",
       "serviceofferingname": "e2.micro",
       "templatename": "RedHat 7 OFICIAL",
