@@ -166,3 +166,9 @@ class CloudstackService(object):
         projects = self.cloudstack_client.\
             listProjects({'listall': 'true', 'simple': 'true'})
         return projects['project']
+
+    def get_vm_prefix(self):
+        configs = self.cloudstack_client.\
+            listConfigurations({'name': 'instance.name'})
+        if configs and configs.get('count', 0) > 0:
+            return configs.get('configuration')[0].get('value')
