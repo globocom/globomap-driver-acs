@@ -224,7 +224,9 @@ class Cloudstack(object):
             return msg.get('id')
 
     def _make_comp_unit_id(self, vm_id):
-        return 'vm-{}'.format(vm_id)
+        cloudstack_service = self._get_cloudstack_service()
+        vm_prefix = cloudstack_service.get_vm_prefix() or "vm"
+        return '{}-{}'.format(vm_prefix, vm_id)
 
     def _create_process_update(self, updates, comp_unit):
         process = 'Processamento de Dados em Modelo Virtual'

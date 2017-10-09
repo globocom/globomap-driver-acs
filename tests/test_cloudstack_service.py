@@ -53,6 +53,24 @@ class TestCloudstackService(unittest.TestCase):
         self.assertIsNone(project)
         self.assertTrue(mock.listProjects.called)
 
+    def test_get_vm_prefix(self):
+        mock = self._mock_list_config(open_json('tests/json/acs_config.json'))
+        service = CloudstackService(mock)
+        vm_prefix = service.get_vm_prefix()
+        self.assertEqual('vm_prefix_mock', vm_prefix)
+
+    def test_get_vm_prefix_given_empty_config_list(self):
+        mock = self._mock_list_config(open_json('tests/json/acs_config_empty.json'))
+        service = CloudstackService(mock)
+        vm_prefix = service.get_vm_prefix()
+        self.assertIsNone(vm_prefix)
+
+    def test_get_vm_prefix_given_no_config_found(self):
+        mock = self._mock_list_config(None)
+        service = CloudstackService(mock)
+        vm_prefix = service.get_vm_prefix()
+        self.assertIsNone(vm_prefix)
+
     def _mock_list_vm(self, vm_json):
         mock = Mock()
         mock.listVirtualMachines.return_value = vm_json
@@ -61,4 +79,9 @@ class TestCloudstackService(unittest.TestCase):
     def _mock_list_projects(self, project_json):
         mock = Mock()
         mock.listProjects.return_value = project_json
+        return mock
+
+    def _mock_list_config(self, config_json):
+        mock = Mock()
+        mock.listConfigurations.return_value = config_json
         return mock

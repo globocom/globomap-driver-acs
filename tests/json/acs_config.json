@@ -1,0 +1,12 @@
+{
+  "count": 1,
+  "context": "ctx-b64f3ac6",
+  "configuration": [
+    {
+      "category": "Advanced",
+      "name": "instance.name",
+      "value": "vm_prefix_mock",
+      "description": "Name of the deployment instance."
+    }
+  ]
+}

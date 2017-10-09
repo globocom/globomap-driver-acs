@@ -26,13 +26,14 @@ class TestCloudstackDriver(unittest.TestCase):
         patch.stopall()
 
     def test_format_comp_unit(self):
+        self._mock_cloudstack_service(None, None)
         self._mock_rabbitmq_client()
         vm = open_json('tests/json/vm.json')['virtualmachine'][0]
         project = open_json('tests/json/project.json')['project'][0]
         compt_unit = self._create_driver()._format_comp_unit_document(project, vm)
 
         self.assertIsNotNone(compt_unit)
-        self.assertEquals("vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", compt_unit["id"])
+        self.assertEquals("test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", compt_unit["id"])
         self.assertEquals("vm_name", compt_unit["name"])
         self.assertEquals("globomap", compt_unit["provider"])
         self.assertIsNotNone(compt_unit["timestamp"])
@@ -55,12 +56,13 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
 
     def test_format_create_vm_delete_document(self):
+        self._mock_cloudstack_service(None, None)
         self._mock_rabbitmq_client()
         updates = self._create_driver()._create_updates(open_json('tests/json/vm_destroy_event.json'))
         vm_delete = updates[0]
@@ -74,27 +76,27 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("DELETE", vm_delete["action"])
         self.assertEquals("comp_unit", vm_delete["collection"])
         self.assertEquals("collections", vm_delete["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
 
         self.assertEquals("DELETE", host_edge_delete["action"])
         self.assertEquals("host_comp_unit", host_edge_delete["collection"])
         self.assertEquals("edges", host_edge_delete["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
 
         self.assertEquals("DELETE", process_edge_delete["action"])
         self.assertEquals("business_process_comp_unit", process_edge_delete["collection"])
         self.assertEquals("edges", process_edge_delete["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
 
         self.assertEquals("DELETE", service_edge_delete["action"])
         self.assertEquals("business_service_comp_unit", service_edge_delete["collection"])
         self.assertEquals("edges", service_edge_delete["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
 
         self.assertEquals("DELETE", client_edge_delete["action"])
         self.assertEquals("client_comp_unit", client_edge_delete["collection"])
         self.assertEquals("edges", client_edge_delete["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
 
     def test_format_upgrade_vm_size_update(self):
         self._mock_rabbitmq_client()
@@ -107,7 +109,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
@@ -122,7 +124,7 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertEquals("PATCH", update["action"])
         self.assertEquals("comp_unit", update["collection"])
         self.assertEquals("collections", update["type"])
-        self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+        self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
@@ -199,11 +201,11 @@ class TestCloudstackDriver(unittest.TestCase):
             if update['action'] == 'PATCH':
                 self.assertEquals("comp_unit", update["collection"])
                 self.assertEquals("collections", update["type"])
-                self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+                self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
             elif update['action'] == 'UPDATE':
                 self.assertEquals("host_comp_unit", update["collection"])
                 self.assertEquals("edges", update["type"])
-                self.assertEquals("globomap_vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+                self.assertEquals("globomap_test-vm-3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
             else:
                 self.fail()
 
@@ -544,6 +546,7 @@ class TestCloudstackDriver(unittest.TestCase):
         acs_service_mock = Mock()
         mock.return_value = acs_service_mock
         acs_service_mock.get_virtual_machine.return_value = vm
+        acs_service_mock.get_vm_prefix.return_value = 'test-vm'
         acs_service_mock.get_project.return_value = project
         return acs_service_mock
 
