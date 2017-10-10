@@ -124,7 +124,7 @@ class Cloudstack(object):
 
             if vm:
                 self.log.debug('Creating updates for event: %s' % raw_msg)
-                project = cloudstack_service.get_project(vm['projectid'])
+                project = cloudstack_service.get_project(vm.get('projectid'))
                 if not project:
                     project = dict()
                 self._create_vm_updates(updates, raw_msg, project, vm)
@@ -231,11 +231,10 @@ class Cloudstack(object):
     def _create_process_update(self, updates, comp_unit):
         process = 'Processamento de Dados em Modelo Virtual'
 
-        name_md5 = hashlib.md5(process.lower()).hexdigest()
         edge = self._create_edge(
             comp_unit['id'],
             'business_process_comp_unit',
-            'business_process/cmdb_{}'.format(name_md5),
+            'business_process/cmdb_{}'.format(self.hash(process)),
             'comp_unit/globomap_{}'.format(comp_unit['id'])
         )
         updates.append(edge)
@@ -252,11 +251,14 @@ class Cloudstack(object):
         allocation = self.project_allocations.get(prj_name)
         if allocation:
             business_service = allocation['business_service']
+            business_service_md5 = self.hash(business_service)
+            link = 'business_service/cmdb_{}'.format(business_service_md5)
+
             if re.search('<.+>', business_service):
                 business_service_element = {
-                    'id': hashlib.md5(business_service.lower()).hexdigest(),
+                    'id': business_service_md5,
                     'name': business_service,
-                    'provider': 'cmdb',
+                    'provider': 'globomap',
                     'timestamp': int(
                         time.mktime(datetime.datetime.now().timetuple())
                     )
@@ -268,20 +270,18 @@ class Cloudstack(object):
                     self.KEY_TEMPLATE % business_service_element['id']
                 ))
 
-            name_md5 = hashlib.md5(
-                allocation['business_service'].lower()).hexdigest()
-            edge = self._create_edge(
-                comp_unit['id'],
-                'business_service_comp_unit',
-                'business_service/cmdb_{}'.format(name_md5),
-                'comp_unit/globomap_{}'.format(comp_unit['id'])
-            )
-            updates.append(edge)
+                link = 'business_service/globomap_{}'\
+                    .format(business_service_md5)
+
+            updates.append(self._create_edge(
+                comp_unit['id'], 'business_service_comp_unit',
+                link, 'comp_unit/globomap_{}'.format(comp_unit['id'])
+            ))
 
     def _create_client_update(self, updates, project_name, comp_unit):
         allocation = self.project_allocations.get(project_name)
         if allocation:
-            name_md5 = hashlib.md5(allocation['client'].lower()).hexdigest()
+            name_md5 = self.hash(allocation['client'])
             edge = self._create_edge(
                 comp_unit['id'],
                 'client_comp_unit',
@@ -405,3 +405,6 @@ class Cloudstack(object):
 
     def _get_setting(self, key, default=None):
         return get_setting(self.env, key, default)
+
+    def hash(self, value):
+        return hashlib.md5(value.lower()).hexdigest()
