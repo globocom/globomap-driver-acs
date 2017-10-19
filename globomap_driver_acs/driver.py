@@ -21,6 +21,7 @@ import time
 
 from cloudstack import CloudStackClient
 from cloudstack import CloudstackService
+from load import CloudstackDataLoader
 from dateutil.parser import parse
 from pika.exceptions import ConnectionClosed
 from rabbitmq import RabbitMQClient
@@ -107,6 +108,9 @@ class Cloudstack(object):
             except:
                 self.rabbitmq.nack_message(delivery_tag)
                 raise
+
+    def full_load(self):
+        CloudstackDataLoader(self.env).run()
 
     def _create_updates(self, raw_msg):
         """
