@@ -161,7 +161,7 @@ class Cloudstack(object):
 
     def _format_comp_unit_document(self, project, vm, event_date=None):
         return {
-            'id': self._make_comp_unit_id(vm['id']),
+            'id': vm['id'],
             'name': vm['name'],
             'timestamp': self._parse_date(event_date),
             'provider': 'globomap',
@@ -198,7 +198,7 @@ class Cloudstack(object):
         }
 
     def _create_vm_cleanup_updates(self, updates, raw_msg):
-        comp_unit_id = self._make_comp_unit_id(self._get_vm_id(raw_msg))
+        comp_unit_id = self._get_vm_id(raw_msg)
         key = self.KEY_TEMPLATE % comp_unit_id
         vm_delete_document = self._create_delete_document(
             'comp_unit', 'collections', key
@@ -226,11 +226,6 @@ class Cloudstack(object):
             return msg.get('entityuuid')
         else:
             return msg.get('id')
-
-    def _make_comp_unit_id(self, vm_id):
-        cloudstack_service = self._get_cloudstack_service()
-        vm_prefix = cloudstack_service.get_vm_prefix() or "vm"
-        return '{}-{}'.format(vm_prefix, vm_id)
 
     def _create_process_update(self, updates, comp_unit):
         process = 'Processamento de Dados em Modelo Virtual'
