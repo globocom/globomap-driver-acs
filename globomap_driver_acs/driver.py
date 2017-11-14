@@ -200,9 +200,6 @@ class Cloudstack(object):
     def _create_vm_cleanup_updates(self, updates, raw_msg):
         comp_unit_id = self._get_vm_id(raw_msg)
         key = self.KEY_TEMPLATE % comp_unit_id
-        vm_delete_document = self._create_delete_document(
-            'comp_unit', 'collections', key
-        )
         host_link_delete = self._create_delete_document(
             'host_comp_unit', 'edges', key
         )
@@ -215,7 +212,6 @@ class Cloudstack(object):
         client_link_delete = self._create_delete_document(
             'client_comp_unit', 'edges', key
         )
-        updates.append(vm_delete_document)
         updates.append(host_link_delete)
         updates.append(process_link_delete)
         updates.append(service_link_delete)
