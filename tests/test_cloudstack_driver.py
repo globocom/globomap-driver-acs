@@ -65,38 +65,32 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_cloudstack_service(None, None)
         self._mock_rabbitmq_client()
         updates = self._create_driver()._create_updates(open_json('tests/json/vm_destroy_event.json'))
-        vm_delete = updates[0]
-        host_edge_delete = updates[1]
-        process_edge_delete = updates[2]
-        service_edge_delete = updates[3]
-        client_edge_delete = updates[4]
+        host_edge_delete = updates[0]
+        process_edge_delete = updates[1]
+        service_edge_delete = updates[2]
+        client_edge_delete = updates[3]
 
-        self.assertEqual(5, len(updates))
-
-        self.assertEquals("DELETE", vm_delete["action"])
-        self.assertEquals("comp_unit", vm_delete["collection"])
-        self.assertEquals("collections", vm_delete["type"])
-        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEqual(4, len(updates))
 
         self.assertEquals("DELETE", host_edge_delete["action"])
         self.assertEquals("host_comp_unit", host_edge_delete["collection"])
         self.assertEquals("edges", host_edge_delete["type"])
-        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", host_edge_delete["key"])
 
         self.assertEquals("DELETE", process_edge_delete["action"])
         self.assertEquals("business_process_comp_unit", process_edge_delete["collection"])
         self.assertEquals("edges", process_edge_delete["type"])
-        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", process_edge_delete["key"])
 
         self.assertEquals("DELETE", service_edge_delete["action"])
         self.assertEquals("business_service_comp_unit", service_edge_delete["collection"])
         self.assertEquals("edges", service_edge_delete["type"])
-        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", service_edge_delete["key"])
 
         self.assertEquals("DELETE", client_edge_delete["action"])
         self.assertEquals("client_comp_unit", client_edge_delete["collection"])
         self.assertEquals("edges", client_edge_delete["type"])
-        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", vm_delete["key"])
+        self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", client_edge_delete["key"])
 
     def test_format_upgrade_vm_size_update(self):
         self._mock_rabbitmq_client()
