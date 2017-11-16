@@ -15,36 +15,40 @@
 """
 import csv
 import logging
-import os
+import requests
 
 
 class CsvReader(object):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, file_path, delimiter, ignore_header=False):
-        self.file_path = file_path
+    def __init__(self, file_url, delimiter, ignore_header=False):
+        self.file_url = file_url
         self.delimiter = delimiter
         self.ignore_header = ignore_header
 
     def get_lines(self):
         lines = []
         try:
-            if self._file_exists(self.file_path):
-                with open(self.file_path, 'r') as file:
-                    parsed_lines = csv.reader(file, delimiter=self.delimiter)
-                    if self.ignore_header:
-                        next(parsed_lines)
+            csv_file = self._get_file()
+            if csv_file:
+                parsed_lines = csv.reader(csv_file, delimiter=self.delimiter)
+                if self.ignore_header:
+                    next(parsed_lines)
 
-                    for line in parsed_lines:
-                        lines.append(line)
+                for line in parsed_lines:
+                    lines.append(line)
             else:
-                self.log.error("Unable to find file at %s" % self.file_path)
+                self.log.error("Unable to find file at %s" % self.file_url)
         except:
-            self.log.exception("Error reading CSV file %s" % self.file_path)
+            self.log.exception("Error reading CSV file %s" % self.file_url)
             raise
 
         return iter(lines)
 
-    def _file_exists(self, file_path):
-        return self.file_path and os.path.isfile(file_path)
+    def _get_file(self):
+        if not self.file_url:
+            return
+        response = requests.get(self.file_url)
+        if response.status_code == 200:
+            return response.content.split('\n')
