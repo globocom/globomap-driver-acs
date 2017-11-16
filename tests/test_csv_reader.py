@@ -15,7 +15,7 @@
 """
 import unittest
 from globomap_driver_acs.csv_reader import CsvReader
-from mock import patch
+from mock import patch, Mock
 
 
 class TestCsvReader(unittest.TestCase):
@@ -24,8 +24,7 @@ class TestCsvReader(unittest.TestCase):
         patch.stopall()
 
     def test_read_csv_file(self):
-        self._mock_file_exists(True)
-        mock_open = self._mock_open_file()
+        self._mock_get_file(True, 'tests/csv/sample.csv')
         csv_mock = self._mock_csv([
             ['account_a', 'Project A', 'account_a - Project A', 'Client A', 'Service A'],
             ['account_b', 'Project B', 'account_b - Project B', 'Client B', 'Service B'],
@@ -36,10 +35,9 @@ class TestCsvReader(unittest.TestCase):
         lines = list(reader.get_lines())
         self.assertEqual(3, len(lines))
         self.assertEqual(1, csv_mock.call_count)
-        self.assertEqual(1, mock_open.call_count)
 
     def test_read_csv_file_given_file_not_found(self):
-        self._mock_file_exists(False)
+        self._mock_get_file(None)
 
         reader = CsvReader('/path/to/file', ',')
         lines = list(reader.get_lines())
@@ -56,14 +54,12 @@ class TestCsvReader(unittest.TestCase):
         self.assertEqual(0, len(lines))
 
     def test_read_csv_file_given_error(self):
-        self._mock_file_exists(True)
-        mock_open = self._mock_open_file()
+        self._mock_get_file(True, 'tests/csv/sample.csv')
         csv_mock = self._mock_csv(Exception())
 
         with self.assertRaises(Exception):
             CsvReader('/path/to/file', ',')
             self.assertEqual(1, csv_mock.call_count)
-            self.assertEqual(1, mock_open.call_count)
 
     def _mock_csv(self, return_value):
         csv_mock = patch('globomap_driver_acs.csv_reader.csv.reader').start()
@@ -73,9 +69,14 @@ class TestCsvReader(unittest.TestCase):
             csv_mock.side_effect = return_value
         return csv_mock
 
-    def _mock_open_file(self):
-        return patch('globomap_driver_acs.csv_reader.open').start()
+    def _mock_get_file(self, file_exists, file_path=None):
+        get_file_mock = patch('globomap_driver_acs.csv_reader.requests.get').start()
+        if file_exists:
+            get_file_mock.return_value = Mock(status_code=200, content=self._open_file(file_path))
+        else:
+            get_file_mock.return_value = Mock(status_code=404)
 
-    def _mock_file_exists(self, exists):
-        is_file_mock = patch('globomap_driver_acs.csv_reader.os.path.isfile').start()
-        is_file_mock.return_value = exists
+    def _open_file(self, file_path):
+        with open(file_path) as data_file:
+            return data_file.read()
+

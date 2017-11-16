@@ -336,15 +336,15 @@ class Cloudstack(object):
             'key': key
         }
 
-    def _read_project_allocation_file(self, file_path):
+    def _read_project_allocation_file(self, file_url):
         """
-        Reads in a given path a CSV file describing which business
+        Reads in a given CSV file describing which business
         service and client are associated with each of the cloudstack
         projects. The format of the file is described below:
         <account>,<project>,<account_project>,<client>,<business_service>,
         The second, fourth and fifth fields are considered by this code
         """
-        lines = CsvReader(file_path, ',').get_lines()
+        lines = CsvReader(file_url, ',').get_lines()
         project_allocations = dict()
 
         for line in lines:
