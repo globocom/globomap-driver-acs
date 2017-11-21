@@ -106,6 +106,7 @@ class Cloudstack(object):
                 self.log.error('Error connecting to RabbitMQ, reconnecting')
                 self._connect_rabbit()
             except:
+                self.log.exception('Error processing message')
                 self.rabbitmq.nack_message(delivery_tag)
                 raise
 
