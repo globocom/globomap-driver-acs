@@ -30,18 +30,18 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         vm = open_json('tests/json/vm.json')['virtualmachine'][0]
         project = open_json('tests/json/project.json')['project'][0]
-        compt_unit = self._create_driver()._format_comp_unit_document(project, vm)
+        comp_unit = self._create_driver()._format_comp_unit_document(project, vm)
 
-        self.assertIsNotNone(compt_unit)
-        self.assertEquals("3018bdf1-4843-43b3-bdcf-ba1beb63c930", compt_unit["id"])
-        self.assertEquals("vm_name", compt_unit["name"])
-        self.assertEquals("globomap", compt_unit["provider"])
-        self.assertIsNotNone(compt_unit["timestamp"])
-        self.assertEqual(13, len(compt_unit['properties'].keys()))
+        self.assertIsNotNone(comp_unit)
+        self.assertEquals("3018bdf1-4843-43b3-bdcf-ba1beb63c930", comp_unit["id"])
+        self.assertEquals("vm_name", comp_unit["name"])
+        self.assertEquals("globomap", comp_unit["provider"])
+        self.assertIsNotNone(comp_unit["timestamp"])
+        self.assertEqual(14, len(comp_unit['properties'].keys()))
 
-        for property_key in compt_unit['properties'].keys():
-            property_meta = compt_unit['properties_metadata'][property_key]
-            self.assertIsNotNone(compt_unit['properties'][property_key])
+        for property_key in comp_unit['properties'].keys():
+            property_meta = comp_unit['properties_metadata'][property_key]
+            self.assertIsNotNone(comp_unit['properties'][property_key])
             self.assertIsNotNone(property_meta)
             self.assertIsNotNone(property_meta['description'])
 
