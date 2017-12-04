@@ -111,7 +111,7 @@ class Cloudstack(object):
                 raise
 
     def full_load(self):
-        CloudstackDataLoader(self.env).run()
+        CloudstackDataLoader(self.env, self._create_updates).run()
 
     def _create_updates(self, raw_msg):
         """
@@ -179,6 +179,7 @@ class Cloudstack(object):
                 'project': project.get('name'),
                 'account': project.get('account', vm.get('account')),
                 'environment': self.env,
+                'iaas_provider': 'cloudstack',
                 'creation_date': self._parse_date(vm['created']),
             },
             'properties_metadata': {
@@ -194,6 +195,7 @@ class Cloudstack(object):
                 'project': {'description': 'Project'},
                 'account': {'description': 'Account'},
                 'environment': {'description': 'Cloudstack Region'},
+                'iaas_provider': {'description': 'Iaas provider name'},
                 'creation_date': {'description': 'Creation Date'}
             }
         }
@@ -309,7 +311,15 @@ class Cloudstack(object):
             'provider': 'globomap',
             'timestamp': timestamp,
             'from': from_key,
-            'to': to_key
+            'to': to_key,
+            'properties': {
+                'environment': self.env,
+                'iaas_provider': 'cloudstack'
+            },
+            'properties_metadata': {
+                'environment': {'description': 'Cloudstack Region'},
+                'iaas_provider': {'description': 'Iaas provider name'}
+            }
         }
         return self._create_update_document(
             self.UPDATE_ACTION, collection, 'edges', edge,
