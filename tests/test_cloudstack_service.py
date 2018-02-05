@@ -50,7 +50,7 @@ class TestCloudstackService(unittest.TestCase):
         service = CloudstackService(mock)
         project = service.get_project('unique_id')
 
-        self.assertIsNone(project)
+        self.assertEqual(dict(), project)
         self.assertTrue(mock.listProjects.called)
 
     def _mock_list_vm(self, vm_json):

@@ -1,0 +1,11 @@
+{
+  "context": "ctx-f108554e",
+  "count": 1,
+  "zone": [
+    {
+      "id": "35ae56ee-273a-46da-8422-fe2b3490c76a",
+      "name": "zone_a",
+      "allocationstate": "Enabled"
+    }
+  ]
+}

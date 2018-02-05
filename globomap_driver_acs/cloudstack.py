@@ -26,7 +26,7 @@ import ssl
 
 class SignedAPICall(object):
 
-    def __init__(self, api_url, apiKey, secret, verifysslcert):
+    def __init__(self, api_url, apiKey, secret, verifysslcert=True):
         self.api_url = api_url
         self.apiKey = apiKey
         self.secret = secret
@@ -161,8 +161,20 @@ class CloudstackService(object):
                 listProjects({'id': id, 'listall': 'true'})
             if projects.get('count') == 1:
                 return projects['project'][0]
+            else:
+                return dict()
+        else:
+            return dict()
 
     def list_projects(self):
         projects = self.cloudstack_client.\
             listProjects({'listall': 'true', 'simple': 'true'})
         return projects['project']
+
+    def get_zone_by_name(self, name):
+        zones = self.cloudstack_client.listZones({'keyword': name})
+        return zones['zone'][0]
+
+    def get_zone_by_id(self, id):
+        zones = self.cloudstack_client.listZones({'id': id})
+        return zones['zone'][0]
