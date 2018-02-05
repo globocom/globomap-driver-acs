@@ -20,8 +20,12 @@ import datetime
 import requests
 
 from time import time
-from globomap_driver_acs.cloudstack import CloudStackClient, CloudstackService
+from globomap_driver_acs.cloudstack import CloudStackClient
+from globomap_driver_acs.cloudstack import CloudstackService
 from globomap_driver_acs.settings import get_setting
+from globomap_driver_acs.update_handlers import Collection
+from globomap_driver_acs.update_handlers import Edge
+from globomap_driver_acs.update_handlers import GloboMapActions
 
 
 class CloudstackDataLoader(object):
@@ -46,18 +50,18 @@ class CloudstackDataLoader(object):
             self.log.info("Creating %s VM events" % len(vms))
 
             for vm in vms:
-                event = self._create_event_object(vm['id'])
+                event = self._create_event(vm['id'])
                 self._publish_updates(self.create_updates(event))
 
         self._clear_not_updated_elements(start_time)
         self.log.info("Processing finished")
 
-    def _create_event_object(self, vm_id):
+    def _create_event(self, vm_id):
+        event_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return {
             "event": "VM.CREATE",
             "resource": "com.cloud.vm.VirtualMachine",
-            "eventDateTime":
-                datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "eventDateTime": event_date,
             "id": vm_id
         }
 
@@ -65,30 +69,42 @@ class CloudstackDataLoader(object):
         try:
             self._send(updates)
         except:
-            self.log.exception("Unable to publish event")
+            self.log.exception("Unable to publish event. Aborting execution")
+            raise
 
     def _clear_not_updated_elements(self, start_time):
+        self.log.info("[Clear] Deleting old elements")
         clears = list()
         clears.append(self._clear(
-            'comp_unit', 'collections', start_time
+            Collection.COMP_UNIT, Collection.type_name(), start_time
         ))
         clears.append(self._clear(
-            'business_process_comp_unit', 'edges', start_time
+            Collection.ZONE, Collection.type_name(), start_time
         ))
         clears.append(self._clear(
-            'business_service_comp_unit', 'edges', start_time
+            Edge.ZONE_HOST, Edge.type_name(), start_time
         ))
         clears.append(self._clear(
-            'client_comp_unit', 'edges', start_time
+            Edge.ZONE_REGION, Edge.type_name(), start_time
         ))
         clears.append(self._clear(
-            'host_comp_unit', 'edges', start_time
+            Edge.PROCESS_COMP_UNIT, Edge.type_name(), start_time
+        ))
+        clears.append(self._clear(
+            Edge.BUSINESS_SERVICE_COMP_UNIT, Edge.type_name(), start_time
+        ))
+        clears.append(self._clear(
+            Edge.CLIENT_COMP_UNIT, Edge.type_name(), start_time
+        ))
+        clears.append(self._clear(
+            Edge.HOST_COMP_UNIT, Edge.type_name(), start_time
         ))
         self._send(clears)
 
     def _clear(self, collection, type, timestamp):
+        self.log.info("Cleaning '%s' before %s" % (collection, timestamp))
         return {
-            'action': 'CLEAR',
+            'action': GloboMapActions.CLEAR,
             'collection': collection,
             'type': type,
             'element': [[
@@ -112,8 +128,7 @@ class CloudstackDataLoader(object):
         )
 
         if response.status_code != 202:
-            self.log.error('Message was not sent %s. Cause: %s' %
-                           (data, response.text))
+            self.log.error('Message not sent %s / %s' % (data, response.text))
         else:
             job_id = json.loads(response.content)['jobid']
             self.log.debug('Message was sent %s', response)

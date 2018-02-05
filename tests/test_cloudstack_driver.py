@@ -17,6 +17,12 @@ import hashlib
 import unittest
 from mock import patch, Mock, MagicMock
 from globomap_driver_acs.driver import Cloudstack
+from globomap_driver_acs.update_handlers import VirtualMachineUpdateHandler
+from globomap_driver_acs.update_handlers import RegionUpdateHandler
+from globomap_driver_acs.update_handlers import DictionaryEntitiesUpdateHandler
+from globomap_driver_acs.update_handlers import HostUpdateHandler
+from globomap_driver_acs.update_handlers import ZoneUpdateHandler
+from globomap_driver_acs.update_handlers import EventTypeHandler
 from tests.util import open_json
 
 
@@ -26,11 +32,11 @@ class TestCloudstackDriver(unittest.TestCase):
         patch.stopall()
 
     def test_format_comp_unit(self):
-        self._mock_cloudstack_service(None, None)
+        self._mock_cloudstack_service(None, None, None)
         self._mock_rabbitmq_client()
         vm = open_json('tests/json/vm.json')['virtualmachine'][0]
         project = open_json('tests/json/project.json')['project'][0]
-        comp_unit = self._create_driver()._format_comp_unit_document(project, vm)
+        comp_unit = self._create_vm_update_handler()._create_comp_unit_document(project, vm)
 
         self.assertIsNotNone(comp_unit)
         self.assertEquals("3018bdf1-4843-43b3-bdcf-ba1beb63c930", comp_unit["id"])
@@ -49,7 +55,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates(open_json('tests/json/vm_create_event.json'))[0]
 
@@ -60,11 +67,11 @@ class TestCloudstackDriver(unittest.TestCase):
         self.assertTrue(cloudstack_mock.get_virtual_machine.called)
         self.assertTrue(cloudstack_mock.get_project.called)
 
-
     def test_format_create_vm_delete_document(self):
-        self._mock_cloudstack_service(None, None)
+        self._mock_cloudstack_service(None, None, None)
         self._mock_rabbitmq_client()
         updates = self._create_driver()._create_updates(open_json('tests/json/vm_destroy_event.json'))
+
         host_edge_delete = updates[0]
         process_edge_delete = updates[1]
         service_edge_delete = updates[2]
@@ -96,7 +103,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates(open_json('tests/json/vm_upgrade_event.json'))[0]
 
@@ -111,7 +119,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates(open_json('tests/json/vm_power_state_event.json'))[0]
 
@@ -126,7 +135,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates({
             "status": "preStateTransitionEvent"
@@ -140,7 +150,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates({
             "status":"Started",
@@ -155,7 +166,8 @@ class TestCloudstackDriver(unittest.TestCase):
         self._mock_rabbitmq_client()
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
         update = self._create_driver()._create_updates({
             "status":"Completed",
@@ -168,7 +180,7 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_format_update_given_no_vm_found(self):
         self._mock_rabbitmq_client()
-        cloudstack_mock = self._mock_cloudstack_service(None, None)
+        cloudstack_mock = self._mock_cloudstack_service(None, None, None)
         update = self._create_driver()._create_updates(open_json('tests/json/vm_create_event.json'))
 
         self.assertEqual([], update)
@@ -177,7 +189,7 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_format_update_wrong_event(self):
         self._mock_rabbitmq_client()
-        cloudstack_mock = self._mock_cloudstack_service(None, None)
+        cloudstack_mock = self._mock_cloudstack_service(None, None, None)
         update = self._create_driver()._create_updates(open_json('tests/json/vm_create_wrong_event.json'))
 
         self.assertEqual([], update)
@@ -188,18 +200,29 @@ class TestCloudstackDriver(unittest.TestCase):
         rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
 
         def callback(update):
-            if update['action'] == 'PATCH':
-                self.assertEquals("comp_unit", update["collection"])
+            if update['action'] == 'PATCH' and update['collection'] == 'comp_unit':
                 self.assertEquals("collections", update["type"])
                 self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
-            elif update['action'] == 'UPDATE':
-                self.assertEquals("host_comp_unit", update["collection"])
+            elif update['action'] == 'PATCH' and update['collection'] == 'zone':
+                self.assertEquals("collections", update["type"])
+                self.assertEquals("globomap_35ae56ee-273a-46da-8422-fe2b3490c76a", update["key"])
+            elif update['action'] == 'UPDATE' and update['collection'] == "host_comp_unit":
                 self.assertEquals("edges", update["type"])
                 self.assertEquals("globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930", update["key"])
+            elif update['action'] == 'UPDATE' and update['collection'] == "zone_host":
+                self.assertEquals("edges", update["type"])
+                self.assertEquals("globomap_hostname", update["key"])
+            elif update['action'] == 'UPDATE' and update['collection'] == "zone_region":
+                self.assertEquals("edges", update["type"])
+                self.assertEquals("globomap_35ae56ee-273a-46da-8422-fe2b3490c76a", update["key"])
+            elif update['action'] == 'PATCH' and update['collection'] == "region":
+                self.assertEquals("collections", update["type"])
+                self.assertEquals("globomap_ENV", update["key"])
             else:
                 self.fail()
 
@@ -213,13 +236,15 @@ class TestCloudstackDriver(unittest.TestCase):
     def test_process_updates_given_vm_without_project(self):
         rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
         cloudstack_mock = self._mock_cloudstack_service(
-            open_json('tests/json/vm.json')['virtualmachine'][0], None
+            open_json('tests/json/vm.json')['virtualmachine'][0],
+            dict(),
+            open_json('tests/json/zone.json')['zone'][0]
         )
 
         def callback(update):
             print update["element"]
             if update['action'] == 'PATCH':
-                self.assertIsNone(update["element"]["properties"]['project'])
+                self.assertIsNone(update["element"]["properties"].get('project'))
 
         self._create_driver().process_updates(callback)
 
@@ -232,7 +257,8 @@ class TestCloudstackDriver(unittest.TestCase):
         rabbit_client_mock = self._mock_rabbitmq_client(open_json('tests/json/vm_create_event.json'))
         cloudstack_mock = self._mock_cloudstack_service(
             open_json('tests/json/vm.json')['virtualmachine'][0],
-            open_json('tests/json/project.json')['project'][0]
+            open_json('tests/json/project.json')['project'][0],
+            open_json('tests/json/zone.json')['zone'][0]
         )
 
         def callback(update):
@@ -248,7 +274,7 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_get_updates_no_messages_found(self):
         self._mock_rabbitmq_client(None)
-        self._mock_cloudstack_service(None, None)
+        self._mock_cloudstack_service(None, None, None)
 
         def callback(update):
             self.fail()
@@ -256,84 +282,73 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_parse_date(self):
         self._mock_rabbitmq_client()
-        self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01 00:00:00 -0300'))
-        self.assertEqual(946692000, self._create_driver()._parse_date('2000-01-01T00:00:00-0300'))
-        self.assertIsNotNone(self._create_driver()._parse_date(None))
+        self.assertEqual(946692000, self._create_vm_update_handler()._parse_date('2000-01-01 00:00:00 -0300'))
+        self.assertEqual(946692000, self._create_vm_update_handler()._parse_date('2000-01-01T00:00:00-0300'))
+        self.assertIsNotNone(self._create_vm_update_handler()._parse_date(None))
 
     def test_is_vm_create_event(self):
-        self._mock_rabbitmq_client()
-        driver = self._create_driver()
-
-        self.assertTrue(driver._is_vm_create_event({
+        self.assertTrue(EventTypeHandler.is_vm_create_event({
             "resource": "com.cloud.vm.VirtualMachine",
             "event": "VM.CREATE"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({
+        self.assertFalse(EventTypeHandler.is_vm_create_event({
             "status": "Completed",
             "event": "VM.CREATE"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({
+        self.assertFalse(EventTypeHandler.is_vm_create_event({
             "event": "VM.START"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({}))
+        self.assertFalse(EventTypeHandler.is_vm_create_event({}))
 
     def test_is_vm_delete_event(self):
-        self._mock_rabbitmq_client()
-        driver = self._create_driver()
 
-        self.assertTrue(driver._is_vm_delete_event({
+        self.assertTrue(EventTypeHandler.is_vm_delete_event({
             "resource": "com.cloud.vm.VirtualMachine",
             "event": "VM.DESTROY"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({
+        self.assertFalse(EventTypeHandler.is_vm_create_event({
             "status": "Completed",
             "event": "VM.DESTROY"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({
+        self.assertFalse(EventTypeHandler.is_vm_create_event({
             "event": "VM.CREATE"
         }))
 
-        self.assertFalse(driver._is_vm_create_event({}))
+        self.assertFalse(EventTypeHandler.is_vm_create_event({}))
 
     def test_is_vm_upgrade_event(self):
-        self._mock_rabbitmq_client()
-        driver = self._create_driver()
-
-        self.assertTrue(driver._is_vm_upgrade_event({
+        self.assertTrue(EventTypeHandler.is_vm_upgrade_event({
             "status": "Completed",
             "event": "VM.UPGRADE"
         }))
 
-        self.assertFalse(driver._is_vm_upgrade_event({
+        self.assertFalse(EventTypeHandler.is_vm_upgrade_event({
             "event": "VM.UPGRADE"
         }))
 
-        self.assertFalse(driver._is_vm_upgrade_event({}))
+        self.assertFalse(EventTypeHandler.is_vm_upgrade_event({}))
 
     def test_is_vm_power_state_event(self):
-        self._mock_rabbitmq_client()
-        driver = self._create_driver()
-
-        self.assertTrue(driver._is_vm_power_state_event({
+        self.assertTrue(EventTypeHandler.is_vm_power_state_event({
             "status": "postStateTransitionEvent",
             "resource": "VirtualMachine"
         }))
 
-        self.assertFalse(driver._is_vm_power_state_event({
+        self.assertFalse(EventTypeHandler.is_vm_power_state_event({
               "status": "pretStateTransitionEvent",
               "resource": "VirtualMachine"
         }))
 
-        self.assertFalse(driver._is_vm_power_state_event({
+        self.assertFalse(EventTypeHandler.is_vm_power_state_event({
               "resource": "VirtualMachine"
         }))
 
-        self.assertFalse(driver._is_vm_power_state_event({}))
+        self.assertFalse(EventTypeHandler.is_vm_power_state_event({}))
 
     def test_read_project_allocation_file(self):
         self._mock_rabbitmq_client()
@@ -376,9 +391,9 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_process_update(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
+        handler = self._create_dictionary_update_handler()
         updates = []
-        driver._create_process_update(updates, {'id': '123'})
+        handler._create_process_update(updates, {'id': '123'})
         self.assertEqual(1, len(updates))
         element = updates[0]['element']
 
@@ -392,11 +407,11 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_client_update(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
-        driver.project_allocations = {'Project A': {'client': 'Client A'}}
+        handler = self._create_dictionary_update_handler()
+        handler.project_allocations = {'Project A': {'client': 'Client A'}}
 
         updates = []
-        driver._create_client_update(updates, 'Project A', {'id': '123'})
+        handler._create_client_update(updates, 'Project A', {'id': '123'})
         element = updates[0]['element']
 
         self.assertEqual(1, len(updates))
@@ -410,20 +425,20 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_client_update_given_project_not_found(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
-        driver.project_allocations = {}
+        handler = self._create_dictionary_update_handler()
+        handler.project_allocations = {}
 
         updates = []
-        driver._create_client_update(updates, 'Project A', {'id': '123'})
+        handler._create_client_update(updates, 'Project A', {'id': '123'})
         self.assertEqual(0, len(updates))
 
     def test_create_business_service_update(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
-        driver.project_allocations = {'Project A': {'business_service': 'Business Service A'}}
+        handler = self._create_dictionary_update_handler()
+        handler.project_allocations = {'Project A': {'business_service': 'Business Service A'}}
 
         updates = []
-        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        handler._create_business_service_update(updates, 'Project A', {'id': '123'})
         element = updates[0]['element']
 
         self.assertEqual(1, len(updates))
@@ -438,20 +453,20 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_business_service_update_project_not_found(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
-        driver.project_allocations = {}
+        handler = self._create_dictionary_update_handler()
+        handler.project_allocations = {}
 
         updates = []
-        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        handler._create_business_service_update(updates, 'Project A', {'id': '123'})
         self.assertEqual(0, len(updates))
 
     def test_create_business_service_update_given_internal_service(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
-        driver.project_allocations = {'Project A': {'business_service': '<Internal Business Service>'}}
+        handler = self._create_dictionary_update_handler()
+        handler.project_allocations = {'Project A': {'business_service': '<Internal Business Service>'}}
 
         updates = []
-        driver._create_business_service_update(updates, 'Project A', {'id': '123'})
+        handler._create_business_service_update(updates, 'Project A', {'id': '123'})
         business_service_creation = updates[0]
         self.assertEqual(2, len(updates))
         self.assertEqual('PATCH', business_service_creation['action'])
@@ -460,10 +475,10 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_host_update(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
+        handler = self._create_host_update_handler()
 
         updates = []
-        driver._create_host_update(updates, {'id': '123'}, 'hostname')
+        handler.create_host_update(updates, {'id': '123'}, 'hostname')
         element = updates[0]['element']
 
         self.assertEqual(1, len(updates))
@@ -477,22 +492,78 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_host_update_given_vm_with_no_host(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
+        handler = self._create_host_update_handler()
 
         updates = []
-        driver._create_host_update(updates, {'id': '123'}, '')
+        handler.create_host_update(updates, {'id': '123'}, '')
 
         self.assertEqual(1, len(updates))
         self.assertEqual('DELETE', updates[0]['action'])
         self.assertEqual('globomap_123', updates[0]['key'])
         self.assertEqual('host_comp_unit', updates[0]['collection'])
 
+    def test_create_zone_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            None, None,
+            open_json('tests/json/zone.json')['zone'][0]
+        )
+
+        handler = self._create_zone_update_handler(cloudstack_service=cloudstack_mock)
+        updates = []
+        handler.create_zone_update(updates, {'id': '123', 'properties': {'zone': 'zone_a'}}, 'hostname')
+
+        self.assertEqual(3, len(updates))
+        self.assertEqual('PATCH', updates[0]['action'])
+        self.assertEqual('globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', updates[0]['key'])
+        self.assertEqual('zone', updates[0]['collection'])
+        self.assertEqual('35ae56ee-273a-46da-8422-fe2b3490c76a', updates[0]['element']['id'])
+        self.assertEqual('zone_a', updates[0]['element']['name'])
+        self.assertEqual('35ae56ee-273a-46da-8422-fe2b3490c76a', updates[0]['element']['properties']['uuid'])
+        self.assertEqual('Enabled', updates[0]['element']['properties']['state'])
+
+        edge = updates[1]['element']
+        self.assertEqual('UPDATE', updates[1]['action'])
+        self.assertEqual('globomap_hostname', updates[1]['key'])
+        self.assertEqual('zone_host', updates[1]['collection'])
+        self.assertEqual('zone/globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', edge['from'])
+        self.assertEqual('comp_unit/globomap_hostname', edge['to'])
+        self.assertEqual('globomap', edge['provider'])
+        self.assertEqual('hostname', edge['id'])
+
+        edge = updates[2]['element']
+        self.assertEqual('UPDATE', updates[2]['action'])
+        self.assertEqual('globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', updates[2]['key'])
+        self.assertEqual('zone_region', updates[2]['collection'])
+        self.assertEqual('zone/globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', edge['from'])
+        self.assertEqual('region/globomap_ENV', edge['to'])
+        self.assertEqual('globomap', edge['provider'])
+        self.assertEqual('35ae56ee-273a-46da-8422-fe2b3490c76a', edge['id'])
+
+
+    def test_create_region_update(self):
+        self._mock_rabbitmq_client()
+        cloudstack_mock = self._mock_cloudstack_service(
+            None, None,
+            open_json('tests/json/zone.json')['zone'][0]
+        )
+
+        handler = self._create_region_update_handler(cloudstack_service=cloudstack_mock)
+        updates = []
+        handler.create_region_update(updates)
+
+        self.assertEqual(1, len(updates))
+        self.assertEqual('PATCH', updates[0]['action'])
+        self.assertEqual('globomap_ENV', updates[0]['key'])
+        self.assertEqual('region', updates[0]['collection'])
+        self.assertEqual('ENV', updates[0]['element']['id'])
+
     def test_create_edge(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
+        handler = self._create_vm_update_handler()
 
         service = hashlib.md5('Business Service A'.lower()).hexdigest()
-        edge = driver._create_edge(
+        edge = handler.create_edge(
             '1',
             'business_service_comp_unit',
             'business_service/cmdb_%s' % service,
@@ -513,9 +584,9 @@ class TestCloudstackDriver(unittest.TestCase):
 
     def test_create_update_document(self):
         self._mock_rabbitmq_client()
-        driver = self._create_driver()
+        handler = self._create_vm_update_handler()
 
-        update = driver._create_update_document(
+        update = handler.create_document(
             'CREATE', 'comp_unit', 'collections', {}, 'KEY'
         )
 
@@ -532,7 +603,7 @@ class TestCloudstackDriver(unittest.TestCase):
         rabbit.get_message.side_effect = [(data, 1), (None, None)]
         return rabbit
 
-    def _mock_cloudstack_service(self, vm, project):
+    def _mock_cloudstack_service(self, vm, project, zone):
         patch('globomap_driver_acs.driver.CloudStackClient').start()
         mock = patch(
             'globomap_driver_acs.driver.CloudstackService'
@@ -541,6 +612,7 @@ class TestCloudstackDriver(unittest.TestCase):
         mock.return_value = acs_service_mock
         acs_service_mock.get_virtual_machine.return_value = vm
         acs_service_mock.get_project.return_value = project
+        acs_service_mock.get_zone_by_name.return_value = zone
         return acs_service_mock
 
     def _mock_csv_reader(self, parsed_csv_file):
@@ -551,5 +623,29 @@ class TestCloudstackDriver(unittest.TestCase):
         return csv_reader_mock
 
     def _create_driver(self):
-        driver = Cloudstack({'env': 'ENV'})
-        return driver
+        return Cloudstack({'env': 'ENV'})
+
+    def _create_vm_update_handler(self, cloudstack_service=None, project_allocations=None):
+        return VirtualMachineUpdateHandler(
+            'ENV', cloudstack_service, project_allocations
+        )
+
+    def _create_dictionary_update_handler(self, cloudstack_service=None, project_allocations=None):
+        return DictionaryEntitiesUpdateHandler(
+            'ENV', cloudstack_service, project_allocations
+        )
+
+    def _create_host_update_handler(self, cloudstack_service=None):
+        return HostUpdateHandler(
+            'ENV', cloudstack_service
+        )
+
+    def _create_zone_update_handler(self, cloudstack_service=None):
+        return ZoneUpdateHandler(
+            'ENV', cloudstack_service
+        )
+
+    def _create_region_update_handler(self, cloudstack_service=None):
+        return RegionUpdateHandler(
+            'ENV', cloudstack_service
+        )
