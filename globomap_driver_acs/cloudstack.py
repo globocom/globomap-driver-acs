@@ -15,13 +15,13 @@
 """
 # -*- coding: utf-8 -*-
 # By: Kelcey Damage, 2012 & Kraig Amador, 2012
+import base64
 import hashlib
 import hmac
-import base64
-import urllib
 import json
-import sys
 import ssl
+import sys
+import urllib
 
 
 class SignedAPICall(object):
@@ -46,8 +46,8 @@ class SignedAPICall(object):
             self.params.append(key + '=' + urllib.quote_plus(args[key]))
 
     def _create_signature(self):
-        self.query = '&'.join(self.params).replace("+", "%20")\
-            .replace(":", "%3A")
+        self.query = '&'.join(self.params).replace('+', '%20')\
+            .replace(':', '%3A')
         digest = hmac.new(
             self.secret,
             msg=self.query.lower(),
@@ -109,12 +109,12 @@ class CloudStackClient(SignedAPICall):
                 else:
                     data = self._http_post(self.value, self.query)
                 break
-            except IOError, e:
+            except IOError as e:
                 tries -= 1
                 if not tries:
                     raise e
 
-        key = command.lower() + "response"
+        key = command.lower() + 'response'
         if key == 'deletenetworkinglobonetworkresponse':
             key = 'deletenetworkresponse'
         if key == 'listglobonetworkpoolsresponse':
