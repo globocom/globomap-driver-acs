@@ -16,16 +16,17 @@
 import logging
 
 from pika.exceptions import ConnectionClosed
-from cloudstack import CloudStackClient
-from cloudstack import CloudstackService
+
+from globomap_driver_acs.cloudstack import CloudStackClient
+from globomap_driver_acs.cloudstack import CloudstackService
 from globomap_driver_acs.csv_reader import CsvReader
-from globomap_driver_acs.update_handlers import VirtualMachineUpdateHandler
-from globomap_driver_acs.update_handlers import RegionUpdateHandler
-from globomap_driver_acs.update_handlers import ZoneUpdateHandler
+from globomap_driver_acs.load import CloudstackDataLoader
+from globomap_driver_acs.rabbitmq import RabbitMQClient
+from globomap_driver_acs.settings import get_setting
 from globomap_driver_acs.update_handlers import EventTypeHandler
-from load import CloudstackDataLoader
-from rabbitmq import RabbitMQClient
-from settings import get_setting
+from globomap_driver_acs.update_handlers import RegionUpdateHandler
+from globomap_driver_acs.update_handlers import VirtualMachineUpdateHandler
+from globomap_driver_acs.update_handlers import ZoneUpdateHandler
 
 
 class Cloudstack(object):
