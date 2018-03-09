@@ -21,7 +21,8 @@ import hmac
 import json
 import ssl
 import sys
-import urllib
+import urllib.parse
+import urllib.request
 
 
 class SignedAPICall(object):
@@ -43,20 +44,20 @@ class SignedAPICall(object):
     def _sort_request(self, args):
         keys = sorted(args.keys())
         for key in keys:
-            self.params.append(key + '=' + urllib.quote_plus(args[key]))
+            self.params.append(key + '=' + urllib.parse.quote_plus(args[key]))
 
     def _create_signature(self):
         self.query = '&'.join(self.params).replace('+', '%20')\
             .replace(':', '%3A')
         digest = hmac.new(
-            self.secret,
-            msg=self.query.lower(),
+            bytes(self.secret, 'utf-8'),
+            msg=bytes(self.query.lower(), 'utf-8'),
             digestmod=hashlib.sha1).digest()
 
         self.signature = base64.b64encode(digest)
 
     def _build_post_request(self, action='GET'):
-        self.query += '&signature=' + urllib.quote_plus(self.signature)
+        self.query += '&signature=' + urllib.parse.quote_plus(self.signature)
         self.value = self.api_url
         if action == 'GET':
             self.value += '?' + self.query
@@ -66,6 +67,7 @@ class CloudStackClient(SignedAPICall):
 
     def __getattr__(self, name):
         def handlerFunction(*args, **kwargs):
+
             args = list(args)
             if len(args) == 1:
                 args.insert(0, 'GET')
@@ -77,30 +79,29 @@ class CloudStackClient(SignedAPICall):
 
     def _http_get(self, url):
         if self.verifysslcert and sys.version_info < (2, 7, 9):
-            response = urllib.urlopen(url)
+            response = urllib.request.urlopen(url)
         else:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
 
-            response = urllib.urlopen(url, context=ctx)
+            response = urllib.request.urlopen(url, context=ctx)
         return response.read()
 
     def _http_post(self, url, data):
         if self.verifysslcert and sys.version_info < (2, 7, 9):
-            response = urllib.urlopen(url, data)
+            response = urllib.request.urlopen(url, data)
         else:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-            response = urllib.urlopen(url, data, context=ctx)
+            response = urllib.request.urlopen(url, data, context=ctx)
         return response.read()
 
     def _make_request(self, command, args, action='GET'):
         args['response'] = 'json'
         args['command'] = command
         self.request(args, action)
-
         tries = 3
         while True:
             try:

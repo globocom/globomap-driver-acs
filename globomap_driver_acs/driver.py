@@ -35,7 +35,6 @@ class Cloudstack(object):
 
     def __init__(self, params):
         self.env = params.get('env')
-
         prj_allocation_file = self._get_setting('PROJECT_ALLOCATION_FILE')
         self.project_allocations = dict()
         if prj_allocation_file:

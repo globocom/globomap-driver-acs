@@ -19,6 +19,7 @@ import re
 import time
 
 from dateutil.parser import parse
+
 from globomap_driver_acs.settings import get_setting
 
 
@@ -300,7 +301,7 @@ class DictionaryEntitiesUpdateHandler(GloboMapUpdateHandler):
 
     @staticmethod
     def hash(value):
-        return hashlib.md5(value.lower()).hexdigest()
+        return hashlib.md5(bytes(value.lower(), 'utf-8')).hexdigest()
 
 
 class ZoneUpdateHandler(GloboMapUpdateHandler):
