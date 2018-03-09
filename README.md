@@ -3,7 +3,7 @@ Python library for globomap-loader to get data from Cloudstack
 
 ## Plugin environment variables configuration
 All of the environment variables below must be set for the plugin to work properly.
-The variables are the combination of the the prefix 'ACS', the environment (region) 
+The variables are the combination of the the prefix 'ACS', the environment (region)
 code passed on the driver constructor and the variable name.
 
 | Variable                    |  Description                    | Example                                      |
@@ -26,6 +26,6 @@ code passed on the driver constructor and the variable name.
 
 ```python
 from globomap_driver_acs.driver import Cloudstack
-driver = Cloudstack(env="ENV_NAME")
+driver = Cloudstack({'env':'ENV_NAME'})
 driver.updates()
 ```

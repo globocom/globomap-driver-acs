@@ -14,8 +14,9 @@
    limitations under the License.
 """
 import csv
+import io
 import logging
-import requests
+import urllib.request
 
 
 class CsvReader(object):
@@ -39,9 +40,9 @@ class CsvReader(object):
                 for line in parsed_lines:
                     lines.append(line)
             else:
-                self.log.error("Unable to find file at %s" % self.file_url)
+                self.log.error('Unable to find file at %s' % self.file_url)
         except:
-            self.log.exception("Error reading CSV file %s" % self.file_url)
+            self.log.exception('Error reading CSV file %s' % self.file_url)
             raise
 
         return iter(lines)
@@ -49,6 +50,8 @@ class CsvReader(object):
     def _get_file(self):
         if not self.file_url:
             return
-        response = requests.get(self.file_url)
-        if response.status_code == 200:
-            return response.content.split('\n')
+
+        webpage = urllib.request.urlopen(self.file_url)
+        response = io.TextIOWrapper(webpage)
+
+        return response
