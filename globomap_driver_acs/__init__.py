@@ -13,8 +13,4 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-
-MAJOR_VERSION = '0'
-MINOR_VERSION = '0'
-PATCH_VERSION = '28'
-VERSION = '.'.join((MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION,))
+__version__ = '0.0.28'

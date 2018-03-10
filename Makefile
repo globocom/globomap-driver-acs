@@ -1,7 +1,7 @@
 # Makefile for globomap-driver-acs
 
 # Version package
-VERSION=$(shell python -c 'import globomap_driver_acs; print globomap_driver_acs.VERSION')
+VERSION=$(shell python -c 'import globomap_driver_acs; print(globomap_driver_acs.__version__)')
 
 # Pip executable path
 PIP := $(shell which pip)
