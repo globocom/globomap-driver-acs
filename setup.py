@@ -15,7 +15,7 @@
 """
 from setuptools import setup
 
-VERSION = __import__('globomap_driver_acs').VERSION
+VERSION = __import__('globomap_driver_acs').__version__
 
 setup(
     name='globomap-driver-acs',
