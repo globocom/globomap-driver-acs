@@ -14,12 +14,9 @@
    limitations under the License.
 """
 import datetime
-import hashlib
-import re
 import time
-
 from dateutil.parser import parse
-
+from globomap_driver_acs import settings
 from globomap_driver_acs.settings import get_setting
 
 
@@ -28,7 +25,7 @@ class GloboMapUpdateHandler(object):
     KEY_TEMPLATE = 'globomap_%s'
     IAAS_PROVIDER = 'cloudstack'
     GLOBOMAP_PROVIDER = 'globomap'
-    CMDB_PROVIDER = 'cmdb'
+    CUSTEIO_PROVIDER = 'custeio'
 
     def __init__(self, env, cloudstack_service):
         self.env = env
@@ -90,11 +87,10 @@ class GloboMapUpdateHandler(object):
 
 class VirtualMachineUpdateHandler(GloboMapUpdateHandler):
 
-    def __init__(self, env, cloudstack_service, project_allocations):
+    def __init__(self, env, cloudstack_service):
         super(VirtualMachineUpdateHandler, self).__init__(
             env, cloudstack_service
         )
-        self.project_allocations = project_allocations
 
     def create_vm_updates(self, updates, raw_msg, project, vm):
         hostname = vm.get('hostname')
@@ -122,10 +118,10 @@ class VirtualMachineUpdateHandler(GloboMapUpdateHandler):
 
         # Creates link between VM and Dictionary entities
         is_vm_create_event = EventTypeHandler.is_vm_create_event(raw_msg)
-        if self.project_allocations and is_vm_create_event:
+        if is_vm_create_event:
             DictionaryEntitiesUpdateHandler(
-                self.env, self.cloudstack_service, self.project_allocations
-            ).create_dictionary_updates(updates, comp_unit_document, project)
+                self.env, self.cloudstack_service, project
+            ).create_dictionary_updates(updates, comp_unit_document)
 
     def _create_comp_unit_document(self, project, vm, event_date=None):
         return {
@@ -221,64 +217,38 @@ class HostUpdateHandler(GloboMapUpdateHandler):
 
 class DictionaryEntitiesUpdateHandler(GloboMapUpdateHandler):
 
-    def __init__(self, env, cloudstack_service, project_allocations):
+    def __init__(self, env, cloudstack_service, project):
         super(DictionaryEntitiesUpdateHandler, self).__init__(
             env, cloudstack_service
         )
-        self.project_allocations = project_allocations
-        self.PROCESS = self.hash('Processamento de Dados em Modelo Virtual')
+        self.project = project
 
-    def create_dictionary_updates(self, updates, comp_unit, project):
-        prj_name = project.get('name')
+    def create_dictionary_updates(self, updates, comp_unit):
         self._create_process_update(updates, comp_unit)
-        self._create_client_update(updates, prj_name, comp_unit)
-        self._create_business_service_update(updates, prj_name, comp_unit)
+        self._create_business_service_update(updates, comp_unit)
+        self._create_client_update(updates, comp_unit)
+        self._create_component_update(updates, comp_unit)
+        self._create_sub_component_update(updates, comp_unit)
+        self._create_product_update(updates, comp_unit)
 
     def _create_process_update(self, updates, comp_unit):
         updates.append(self.create_edge(
             comp_unit['id'],
             Edge.PROCESS_COMP_UNIT,
-            self.link(Collection.PROCESS, self.PROCESS, self.CMDB_PROVIDER),
+            self.link(Collection.PROCESS, settings.DEFAULT_PROCESS_ID,
+                      self.CUSTEIO_PROVIDER),
             self.link(Collection.COMP_UNIT, comp_unit['id'])
         ))
 
-    def _create_business_service_update(self, updates, prj_name, comp_unit):
-        """
-        Creates the edge document linking a virtual machine document to a
-        business service. If the business service name is surrounded by
-        <> (lesser and greater sign), like <Business>, it means that this
-        is a internal business service and therefore not inserted in the
-        GloboMap API, so it must be created.
-        """
-
-        allocation = self.project_allocations.get(prj_name)
-        if allocation:
-            business_service = allocation['business_service']
-            service_hash = self.hash(business_service)
+    def _create_business_service_update(self, updates, comp_unit):
+        if self.project and self.project.get('businessserviceid'):
+            business_service_id = self.project['businessserviceid']
 
             from_link = self.link(
-                Collection.BUSINESS_SERVICE, service_hash, self.CMDB_PROVIDER
+                Collection.BUSINESS_SERVICE,
+                business_service_id,
+                self.CUSTEIO_PROVIDER
             )
-
-            if re.search('<.+>', business_service):
-                business_service_document = {
-                    'id': service_hash,
-                    'name': business_service,
-                    'provider': self.GLOBOMAP_PROVIDER,
-                    'timestamp': self.now_timestamp()
-                }
-
-                updates.append(self.create_document(
-                    GloboMapActions.PATCH,
-                    Collection.BUSINESS_SERVICE,
-                    Collection.type_name(),
-                    business_service_document,
-                    self.create_key(business_service_document['id'])
-                ))
-
-                from_link = self.link(
-                    Collection.BUSINESS_SERVICE, service_hash
-                )
 
             updates.append(self.create_edge(
                 comp_unit['id'],
@@ -287,21 +257,53 @@ class DictionaryEntitiesUpdateHandler(GloboMapUpdateHandler):
                 self.link(Collection.COMP_UNIT, comp_unit['id'])
             ))
 
-    def _create_client_update(self, updates, project_name, comp_unit):
-        allocation = self.project_allocations.get(project_name)
-        if allocation:
-            client_hash = self.hash(allocation['client'])
+    def _create_client_update(self, updates, comp_unit):
+        if self.project and self.project.get('clientid'):
+            client_id = self.project['clientid']
 
             updates.append(self.create_edge(
                 comp_unit['id'],
                 Edge.CLIENT_COMP_UNIT,
-                self.link(Collection.CLIENT, client_hash, self.CMDB_PROVIDER),
+                self.link(Collection.CLIENT, client_id,
+                          self.CUSTEIO_PROVIDER),
                 self.link(Collection.COMP_UNIT, comp_unit['id']),
             ))
 
-    @staticmethod
-    def hash(value):
-        return hashlib.md5(bytes(value.lower(), 'utf-8')).hexdigest()
+    def _create_component_update(self, updates, comp_unit):
+        if self.project and self.project.get('componentid'):
+            component_id = self.project['componentid']
+
+            updates.append(self.create_edge(
+                comp_unit['id'],
+                Edge.COMPONENT_COMP_UNIT,
+                self.link(Collection.COMPONENT, component_id,
+                          self.CUSTEIO_PROVIDER),
+                self.link(Collection.COMP_UNIT, comp_unit['id']),
+            ))
+
+    def _create_sub_component_update(self, updates, comp_unit):
+        if self.project and self.project.get('subcomponentid'):
+            sub_component_id = self.project['subcomponentid']
+
+            updates.append(self.create_edge(
+                comp_unit['id'],
+                Edge.SUB_COMPONENT_COMP_UNIT,
+                self.link(Collection.SUB_COMPONENT, sub_component_id,
+                          self.CUSTEIO_PROVIDER),
+                self.link(Collection.COMP_UNIT, comp_unit['id']),
+            ))
+
+    def _create_product_update(self, updates, comp_unit):
+        if self.project and self.project.get('productid'):
+            product_id = self.project['productid']
+
+            updates.append(self.create_edge(
+                comp_unit['id'],
+                Edge.PRODUCT_COMP_UNIT,
+                self.link(Collection.PRODUCT, product_id,
+                          self.CUSTEIO_PROVIDER),
+                self.link(Collection.COMP_UNIT, comp_unit['id']),
+            ))
 
 
 class ZoneUpdateHandler(GloboMapUpdateHandler):
@@ -452,9 +454,12 @@ class Collection(object):
     COMP_UNIT = 'comp_unit'
     ZONE = 'zone'
     REGION = 'region'
-    BUSINESS_SERVICE = 'business_service'
-    PROCESS = 'business_process'
-    CLIENT = 'client'
+    BUSINESS_SERVICE = 'custeio_business_service'
+    PROCESS = 'custeio_process'
+    CLIENT = 'custeio_client'
+    COMPONENT = 'custeio_component'
+    SUB_COMPONENT = 'custeio_sub_component'
+    PRODUCT = 'custeio_product'
 
     @staticmethod
     def type_name():
@@ -470,6 +475,9 @@ class Edge(object):
     CLIENT_COMP_UNIT = 'client_comp_unit'
     BUSINESS_SERVICE_COMP_UNIT = 'business_service_comp_unit'
     PROCESS_COMP_UNIT = 'business_process_comp_unit'
+    COMPONENT_COMP_UNIT = 'component_comp_unit'
+    SUB_COMPONENT_COMP_UNIT = 'sub_component_comp_unit'
+    PRODUCT_COMP_UNIT = 'product_comp_unit'
 
     @staticmethod
     def type_name():
