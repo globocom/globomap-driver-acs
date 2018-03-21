@@ -14,7 +14,7 @@
    limitations under the License.
 """
 import unittest
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 from globomap_driver_acs.load import CloudstackDataLoader
 
 
@@ -90,7 +90,6 @@ class TestLoad(unittest.TestCase):
 
     def test_get_clear_request(self):
         clear_request = CloudstackDataLoader('ENV', None)._clear('comp_unit', 'collections', 10000)
-        print clear_request
 
         self.assertEqual('CLEAR', clear_request['action'])
         self.assertEqual('comp_unit', clear_request['collection'])

@@ -19,7 +19,6 @@ from pika.exceptions import ConnectionClosed
 
 from globomap_driver_acs.cloudstack import CloudStackClient
 from globomap_driver_acs.cloudstack import CloudstackService
-from globomap_driver_acs.csv_reader import CsvReader
 from globomap_driver_acs.load import CloudstackDataLoader
 from globomap_driver_acs.rabbitmq import RabbitMQClient
 from globomap_driver_acs.settings import get_setting
@@ -35,12 +34,6 @@ class Cloudstack(object):
 
     def __init__(self, params):
         self.env = params.get('env')
-        prj_allocation_file = self._get_setting('PROJECT_ALLOCATION_FILE')
-        self.project_allocations = dict()
-        if prj_allocation_file:
-            self.project_allocations = self._read_project_allocation_file(
-                prj_allocation_file
-            )
         self._connect_rabbit()
         self._create_queue_binds()
 
@@ -82,9 +75,7 @@ class Cloudstack(object):
         acs_service = self._get_cloudstack_service()
         updates = []
 
-        vm_update_handler = VirtualMachineUpdateHandler(
-            self.env, acs_service, self.project_allocations
-        )
+        vm_update_handler = VirtualMachineUpdateHandler(self.env, acs_service)
 
         if EventTypeHandler.is_vm_update_event(raw_msg):
             vm_id = vm_update_handler.get_vm_id(raw_msg)
@@ -110,28 +101,6 @@ class Cloudstack(object):
             zone_handler.create_zone_status_update(updates, zone_id)
 
         return updates
-
-    @staticmethod
-    def _read_project_allocation_file(file_url):
-        """
-        Reads in a given CSV file describing which business
-        service and client are associated with each of the cloudstack
-        projects. The format of the file is described below:
-        <account>,<project>,<account_project>,<client>,<business_service>,
-        The second, fourth and fifth fields are considered by this code
-        """
-        project_allocations = dict()
-
-        for line in CsvReader(file_url, ',').get_lines():
-            project_name = line[1]
-            business_service_name = line[4]
-            client = line[3]
-            if business_service_name and client:
-                project_allocations[project_name] = {
-                    'business_service': business_service_name,
-                    'client': client
-                }
-        return project_allocations
 
     def _connect_rabbit(self):
         self.rabbitmq = RabbitMQClient(

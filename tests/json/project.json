@@ -5,7 +5,12 @@
     {
       "account": "account_name",
       "id": "bb3b9898-8248-4348-8883-d097a1158991",
-      "name": "project_name"
+      "name": "project_name",
+      "businessserviceid": "1",
+      "clientid": "1",
+      "componentid": "1",
+      "subcomponentid": "1",
+      "productid": "1"
     }
   ]
 }

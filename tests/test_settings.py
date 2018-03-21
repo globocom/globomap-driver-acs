@@ -14,7 +14,7 @@
    limitations under the License.
 """
 import unittest
-from mock import patch
+from unittest.mock import patch
 from globomap_driver_acs.settings import get_setting
 
 

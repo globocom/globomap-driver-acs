@@ -13,13 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-import json
 import unittest
-
-from mock import MagicMock
-from mock import Mock
-from mock import patch
-
+from unittest.mock import MagicMock, Mock, patch
 from globomap_driver_acs.rabbitmq import RabbitMQClient
 
 

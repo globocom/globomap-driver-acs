@@ -14,7 +14,7 @@
    limitations under the License.
 """
 import unittest
-from mock import Mock
+from unittest.mock import Mock
 from globomap_driver_acs.cloudstack import CloudstackService
 from tests.util import open_json
 

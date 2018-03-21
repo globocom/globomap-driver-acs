@@ -19,7 +19,6 @@ code passed on the driver constructor and the variable name.
 | ACS_$env_RMQ_EXCHANGE       | Cloudstack RabbitMQ Exchange    | cloudstack-events (default value)            |
 | ACS_$env_RMQ_LOADER_EXCHANGE| Cloudstack RabbitMQ Loader Exchange| cloudstack-globomap-loader                |
 | ACS_$env_RMQ_VIRTUAL_HOST   | Cloudstack RabbitMQ virtual host| /globomap                                    |
-| ACS_$env_PROJECT_ALLOCATION_FILE| Path to the project allocation CSV file| /path/to/file                     |
 
 
 ## Example of use
