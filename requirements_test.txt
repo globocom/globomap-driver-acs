@@ -1,0 +1,6 @@
+-r requirements.txt
+coverage==4.4.1
+
+mock==2.0.0
+pycodestyle==2.3.1
+unittest2==1.1.0

@@ -15,7 +15,9 @@
 """
 import datetime
 import time
+
 from dateutil.parser import parse
+
 from globomap_driver_acs import settings
 from globomap_driver_acs.settings import get_setting
 
@@ -472,12 +474,12 @@ class Edge(object):
     ZONE_HOST = 'zone_host'
     ZONE_COMP_UNIT = 'zone_comp_unit'
     HOST_COMP_UNIT = 'host_comp_unit'
-    CLIENT_COMP_UNIT = 'client_comp_unit'
-    BUSINESS_SERVICE_COMP_UNIT = 'business_service_comp_unit'
-    PROCESS_COMP_UNIT = 'business_process_comp_unit'
-    COMPONENT_COMP_UNIT = 'component_comp_unit'
-    SUB_COMPONENT_COMP_UNIT = 'sub_component_comp_unit'
-    PRODUCT_COMP_UNIT = 'product_comp_unit'
+    CLIENT_COMP_UNIT = 'custeio_client_comp_unit'
+    BUSINESS_SERVICE_COMP_UNIT = 'custeio_business_service_comp_unit'
+    PROCESS_COMP_UNIT = 'custeio_process_comp_unit'
+    COMPONENT_COMP_UNIT = 'custeio_component_comp_unit'
+    SUB_COMPONENT_COMP_UNIT = 'custeio_sub_component_comp_unit'
+    PRODUCT_COMP_UNIT = 'custeio_product_comp_unit'
 
     @staticmethod
     def type_name():
