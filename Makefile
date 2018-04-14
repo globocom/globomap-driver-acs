@@ -26,7 +26,7 @@ clean:
 compile: clean
 	@echo "Compiling source code..."
 	@python -tt -m compileall .
-	@pep8 --format=pylint --statistics globomap_driver_acs setup.py
+	@pycodestyle --format=pylint --statistics globomap_driver_acs setup.py
 
 tests: clean compile
 	@python -m unittest discover -s tests/
