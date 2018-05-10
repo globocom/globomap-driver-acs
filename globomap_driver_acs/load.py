@@ -24,9 +24,9 @@ from globomap_loader_api_client.update import Update
 from globomap_driver_acs.cloudstack import CloudStackClient
 from globomap_driver_acs.cloudstack import CloudstackService
 from globomap_driver_acs.settings import get_setting
-from globomap_driver_acs.settings import GLOBOMAP_LOADER_PASSWORD
-from globomap_driver_acs.settings import GLOBOMAP_LOADER_URL
-from globomap_driver_acs.settings import GLOBOMAP_LOADER_USERNAME
+from globomap_driver_acs.settings import GLOBOMAP_LOADER_API_PASSWORD
+from globomap_driver_acs.settings import GLOBOMAP_LOADER_API_URL
+from globomap_driver_acs.settings import GLOBOMAP_LOADER_API_USERNAME
 from globomap_driver_acs.update_handlers import Collection
 from globomap_driver_acs.update_handlers import Edge
 from globomap_driver_acs.update_handlers import GloboMapActions
@@ -42,9 +42,9 @@ class CloudstackDataLoader(object):
         self.create_updates = create_updates
 
         auth_inst = auth.Auth(
-            api_url=GLOBOMAP_LOADER_URL,
-            username=GLOBOMAP_LOADER_USERNAME,
-            password=GLOBOMAP_LOADER_PASSWORD
+            api_url=GLOBOMAP_LOADER_API_URL,
+            username=GLOBOMAP_LOADER_API_USERNAME,
+            password=GLOBOMAP_LOADER_API_PASSWORD
         )
         self.update = Update(auth=auth_inst, driver_name='cloudstack')
 
