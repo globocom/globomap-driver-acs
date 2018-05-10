@@ -20,6 +20,13 @@ code passed on the driver constructor and the variable name.
 | ACS_$env_RMQ_LOADER_EXCHANGE| Cloudstack RabbitMQ Loader Exchange| cloudstack-globomap-loader                |
 | ACS_$env_RMQ_VIRTUAL_HOST   | Cloudstack RabbitMQ virtual host| /globomap                                    |
 
+## Environment variables configuration to use CloudstackDataLoader
+| Variable                       |  Description                    | Example                                      |
+|--------------------------------|---------------------------------|----------------------------------------------|
+| GLOBOMAP_LOADER_API_URL        | GloboMap Loader API endpoint    | http://api.globomap.loader.domain.com:8080   |
+| GLOBOMAP_LOADER_API_USER       | GloboMap Loader API user        | user                                         |
+| GLOBOMAP_LOADER_API_PASSWORD   | GloboMap Loader API password    | password                                     |
+
 
 ## Example of use
 

@@ -12,10 +12,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-"""
-import os
 
-'''
 Used environment variables
 
 ACS_$env_API_URL
@@ -29,14 +26,19 @@ ACS_$env_RMQ_QUEUE
 ACS_$env_RMQ_EXCHANGE
 ACS_$env_RMQ_LOADER_EXCHANGE
 ACS_$env_RMQ_VIRTUAL_HOST
-'''
+"""
+import os
 
 DEFAULT_PROCESS_ID = os.getenv(
     'CUSTEIO_DEFAULT_PROCESS_ID', '7a9456320f328700fd7f91dbe1050e27')
 
+GLOBOMAP_LOADER_URL = os.getenv('GLOBOMAP_LOADER_URL')
+GLOBOMAP_LOADER_USERNAME = os.getenv('GLOBOMAP_LOADER_USERNAME')
+GLOBOMAP_LOADER_PASSWORD = os.getenv('GLOBOMAP_LOADER_PASSWORD')
+
 
 def get_setting(env, key, default=None):
-    value = os.getenv("ACS_%s_%s" % (env, key))
+    value = os.getenv('ACS_%s_%s' % (env, key))
     if not value and default:
         return default
     return value
