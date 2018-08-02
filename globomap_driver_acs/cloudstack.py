@@ -15,14 +15,18 @@
 """
 # -*- coding: utf-8 -*-
 # By: Kelcey Damage, 2012 & Kraig Amador, 2012
+# Change By: Ederson Brilhante, 2018
 import base64
 import hashlib
 import hmac
 import json
+import logging
 import ssl
 import sys
 import urllib.parse
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 
 class SignedAPICall(object):
@@ -106,7 +110,14 @@ class CloudStackClient(SignedAPICall):
         while True:
             try:
                 if action == 'GET':
-                    data = self._http_get(self.value)
+                    try:
+                        data = self._http_get(self.value)
+                    except urllib.request.HTTPError as err:
+                        if err.status in (404, 431):
+                            logger.exception('Erro get informations in ACS')
+                            return None
+                        else:
+                            raise Exception(err) from urllib.request.HTTPError
                 else:
                     data = self._http_post(self.value, self.query)
                 break

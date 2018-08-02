@@ -14,6 +14,7 @@
    limitations under the License.
 """
 import json
+
 import pika
 
 
@@ -33,7 +34,7 @@ class RabbitMQClient(object):
     def get_message(self):
         method_frame, _, body = self.channel.basic_get(self.queue_name)
         if body:
-            return json.loads(body), method_frame.delivery_tag
+            return json.loads(body.decode('utf-8')), method_frame.delivery_tag
         else:
             return None, None
 

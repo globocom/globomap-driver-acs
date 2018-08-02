@@ -27,10 +27,10 @@ from globomap_driver_acs.update_handlers import RegionUpdateHandler
 from globomap_driver_acs.update_handlers import VirtualMachineUpdateHandler
 from globomap_driver_acs.update_handlers import ZoneUpdateHandler
 
+logger = logging.getLogger(__name__)
+
 
 class Cloudstack(object):
-
-    log = logging.getLogger(__name__)
 
     def __init__(self, params):
         self.env = params.get('env')
@@ -55,10 +55,10 @@ class Cloudstack(object):
                 else:
                     return
             except ConnectionClosed:
-                self.log.error('Error connecting to RabbitMQ, reconnecting')
+                logger.error('Error connecting to RabbitMQ, reconnecting')
                 self._connect_rabbit()
-            except:
-                self.log.exception('Error processing message')
+            except Exception:
+                logger.exception('Error processing message')
                 self.rabbitmq.nack_message(delivery_tag)
                 raise
 
@@ -82,7 +82,7 @@ class Cloudstack(object):
             vm = acs_service.get_virtual_machine(vm_id)
 
             if vm:
-                self.log.debug('Creating updates for event: %s' % raw_msg)
+                logger.debug('Creating updates for event: %s' % raw_msg)
                 project = acs_service.get_project(vm.get('projectid'))
                 vm_update_handler.create_vm_updates(
                     updates, raw_msg, project, vm
@@ -92,7 +92,7 @@ class Cloudstack(object):
                 region_handler.create_region_update(updates)
 
         elif EventTypeHandler.is_vm_delete_event(raw_msg):
-            self.log.debug('Creating cleanup updates for event: %s' % raw_msg)
+            logger.debug('Creating cleanup updates for event: %s' % raw_msg)
             vm_update_handler.create_vm_cleanup_updates(updates, raw_msg)
 
         elif EventTypeHandler.is_zone_change_state_event(raw_msg):
