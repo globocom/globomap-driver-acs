@@ -33,5 +33,5 @@ code passed on the driver constructor and the variable name.
 ```python
 from globomap_driver_acs.driver import Cloudstack
 driver = Cloudstack({'env':'ENV_NAME'})
-driver.updates()
+driver.process_updates(print)
 ```
