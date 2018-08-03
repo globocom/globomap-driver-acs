@@ -134,9 +134,7 @@ class CloudstackDataLoader(object):
         except Exception:
             logger.exception('Message dont sent %s', json.dumps(data))
         else:
-            job_id = res.json()['jobid']
             logger.debug('Message was sent %s', res)
-            logger.info('Message was sent under JOB ID %s', job_id)
 
     def _get_cloudstack_service(self):
         acs_url = self._get_setting('API_URL')
