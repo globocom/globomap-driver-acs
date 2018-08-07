@@ -157,6 +157,8 @@ class CloudstackService(object):
     def get_virtual_machine(self, id):
         virtual_machines = self.cloudstack_client.\
             listVirtualMachines({'id': id, 'listall': 'true'})
+        if not virtual_machines:
+            return None
         if virtual_machines.get('count') == 1:
             return virtual_machines['virtualmachine'][0]
 
