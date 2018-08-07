@@ -97,7 +97,7 @@ class VirtualMachineUpdateHandler(GloboMapUpdateHandler):
     def create_vm_updates(self, updates, raw_msg, project, vm):
         hostname = vm.get('hostname')
         comp_unit_document = self._create_comp_unit_document(
-            project, vm, raw_msg['eventDateTime']
+            project, vm, raw_msg.get('eventDateTime')
         )
         updates.append(self.create_document(
             GloboMapActions.PATCH,
