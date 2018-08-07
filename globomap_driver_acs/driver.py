@@ -79,17 +79,20 @@ class Cloudstack(object):
 
         if EventTypeHandler.is_vm_update_event(raw_msg):
             vm_id = vm_update_handler.get_vm_id(raw_msg)
-            vm = acs_service.get_virtual_machine(vm_id)
 
-            if vm:
-                logger.debug('Creating updates for event: %s' % raw_msg)
-                project = acs_service.get_project(vm.get('projectid'))
-                vm_update_handler.create_vm_updates(
-                    updates, raw_msg, project, vm
-                )
+            if vm_id:
+                vm = acs_service.get_virtual_machine(vm_id)
+                if vm:
+                    logger.debug('Creating updates for event: %s' % raw_msg)
+                    project = acs_service.get_project(vm.get('projectid'))
+                    vm_update_handler.create_vm_updates(
+                        updates, raw_msg, project, vm
+                    )
 
-                region_handler = RegionUpdateHandler(self.env, acs_service)
-                region_handler.create_region_update(updates)
+                    region_handler = RegionUpdateHandler(self.env, acs_service)
+                    region_handler.create_region_update(updates)
+            else:
+                logger.error('VM Id not found in message: %s', raw_msg)
 
         elif EventTypeHandler.is_vm_delete_event(raw_msg):
             logger.debug('Creating cleanup updates for event: %s' % raw_msg)
