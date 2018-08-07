@@ -1,4 +1,4 @@
-globomap-loader-api-client==0.0.5
+globomap-loader-api-client==0.0.6
 pika==0.10.0
 python-dateutil==2.4.2
 requests==2.10.0
