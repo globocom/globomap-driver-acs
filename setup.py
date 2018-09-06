@@ -25,7 +25,7 @@ setup(
     author='Victor Mendes Eduardo',
     author_email='victor.eduard@corp.globo.com',
     install_requires=[
-        'globomap-loader-api-client==0.0.6',
+        'globomap-loader-api-client==0.0.7',
         'pika==0.10.0',
         'python-dateutil==2.4.2',
         'requests==2.10.0',
