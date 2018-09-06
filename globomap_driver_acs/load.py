@@ -97,6 +97,9 @@ class CloudstackDataLoader(object):
             Collection.ZONE, Collection.type_name(), start_time
         ))
         clears.append(self._clear(
+            Collection.REGION, Collection.type_name(), start_time
+        ))
+        clears.append(self._clear(
             Edge.ZONE_HOST, Edge.type_name(), start_time
         ))
         clears.append(self._clear(

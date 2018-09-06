@@ -350,17 +350,19 @@ class ZoneUpdateHandler(GloboMapUpdateHandler):
             'properties': {
                 'uuid': zone['id'],
                 'state': zone['allocationstate'],
+                'environment': self.env,
                 'iaas_provider': self.IAAS_PROVIDER
             },
             'properties_metadata': {
                 'uuid': {'description': 'UUID'},
                 'state': {'description': 'Zone state'},
+                'environment': {'description': 'Cloudstack Region'},
                 'iaas_provider': {'description': 'IaaS provider'}
             }
         }
 
         updates.append(self.create_document(
-            GloboMapActions.PATCH,
+            GloboMapActions.UPDATE,
             Collection.ZONE,
             Collection.type_name(),
             zone_document,
@@ -385,14 +387,16 @@ class RegionUpdateHandler(GloboMapUpdateHandler):
             'timestamp': self.now_timestamp(),
             'provider': self.GLOBOMAP_PROVIDER,
             'properties': {
+                'environment': self.env,
                 'iaas_provider': self.IAAS_PROVIDER
             },
             'properties_metadata': {
+                'environment': {'description': 'Cloudstack Region'},
                 'iaas_provider': {'description': 'IaaS provider'}
             }
         }
         updates.append(self.create_document(
-            GloboMapActions.PATCH,
+            GloboMapActions.UPDATE,
             Collection.REGION,
             Collection.type_name(),
             region_document,
