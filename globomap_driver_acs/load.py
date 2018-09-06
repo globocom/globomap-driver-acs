@@ -59,7 +59,7 @@ class CloudstackDataLoader(object):
             prj_name = project.get('name', project.get('displaytext'))
             logger.info('Processing project %s' % prj_name)
             pages = math.ceil(project.get('vmtotal', 0) / 500)
-            for page in range(0, pages):
+            for page in range(1, pages + 1):
                 vms = acs_service.list_virtual_machines_by_project(
                     project['id'], page, 500)
                 logger.info('Creating %s VM events' % len(vms))
