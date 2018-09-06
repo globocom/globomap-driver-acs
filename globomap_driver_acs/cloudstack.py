@@ -162,9 +162,14 @@ class CloudstackService(object):
         if virtual_machines.get('count') == 1:
             return virtual_machines['virtualmachine'][0]
 
-    def list_virtual_machines_by_project(self, project_id):
+    def list_virtual_machines_by_project(self, project_id, page=1, pagesize=500):
         virtual_machines = self.cloudstack_client. \
-            listVirtualMachines({'listall': 'true', 'projectid': project_id})
+            listVirtualMachines({
+                'listall': 'true',
+                'projectid': project_id,
+                'page': str(page),
+                'pagesize': str(pagesize)
+            })
         if not virtual_machines.get('virtualmachine'):
             return []
         return virtual_machines['virtualmachine']
