@@ -16,6 +16,7 @@
 import datetime
 import json
 import logging
+import math
 from time import time
 
 from globomap_loader_api_client import auth
@@ -57,12 +58,15 @@ class CloudstackDataLoader(object):
         for project in projects:
             prj_name = project.get('name', project.get('displaytext'))
             logger.info('Processing project %s' % prj_name)
-            vms = acs_service.list_virtual_machines_by_project(project['id'])
-            logger.info('Creating %s VM events' % len(vms))
+            pages = math.ceil(project.get('vmtotal', 0) / 500)
+            for page in range(0, pages):
+                vms = acs_service.list_virtual_machines_by_project(
+                    project['id'], page, 500)
+                logger.info('Creating %s VM events' % len(vms))
 
-            for vm in vms:
-                event = self._create_event(vm['id'])
-                self._publish_updates(self.create_updates(event))
+                for vm in vms:
+                    event = self._create_event(vm['id'])
+                    self._publish_updates(self.create_updates(event))
 
         self._clear_not_updated_elements(start_time)
         logger.info('Processing finished')
