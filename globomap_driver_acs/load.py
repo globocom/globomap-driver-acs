@@ -50,11 +50,18 @@ class CloudstackDataLoader(object):
         self.update = Update(auth=auth_inst, driver_name='cloudstack')
 
     def run(self):
+        start_time = int(time())
         acs_service = self._get_cloudstack_service()
+        self._process_accounts(acs_service)
+        self._process_projects(acs_service)
+
+        self._clear_not_updated_elements(start_time)
+        logger.info('Processing finished')
+
+    def _process_projects(self, acs_service):
+
         projects = acs_service.list_projects()
         logger.info('%s projects found. Processing:' % len(projects))
-        start_time = int(time())
-
         for project in projects:
             prj_name = project.get('name', project.get('displaytext'))
             logger.info('Processing project %s' % prj_name)
@@ -68,8 +75,21 @@ class CloudstackDataLoader(object):
                     event = self._create_event(vm['id'])
                     self._publish_updates(self.create_updates(event))
 
-        self._clear_not_updated_elements(start_time)
-        logger.info('Processing finished')
+    def _process_accounts(self, acs_service):
+        accounts = acs_service.list_accounts()
+        logger.info('%s accounts found. Processing:' % len(accounts))
+        for account in accounts:
+            prj_name = account.get('name', account.get('displaytext'))
+            logger.info('Processing account %s' % prj_name)
+            pages = math.ceil(account.get('vmtotal', 0) / 500)
+            for page in range(1, pages + 1):
+                vms = acs_service.list_virtual_machines_by_account(
+                    account['id'], page, 500)
+                logger.info('Creating %s VM events' % len(vms))
+
+                for vm in vms:
+                    event = self._create_event(vm['id'])
+                    self._publish_updates(self.create_updates(event))
 
     def _create_event(self, vm_id):
         event_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

@@ -170,7 +170,19 @@ class CloudstackService(object):
                 'page': str(page),
                 'pagesize': str(pagesize)
             })
-        if not virtual_machines.get('virtualmachine'):
+        if not virtual_machines or not virtual_machines.get('virtualmachine'):
+            return []
+        return virtual_machines['virtualmachine']
+
+    def list_virtual_machines_by_account(self, account_id, page=1, pagesize=500):
+        virtual_machines = self.cloudstack_client. \
+            listVirtualMachines({
+                'listall': 'true',
+                'accountid': account_id,
+                'page': str(page),
+                'pagesize': str(pagesize)
+            })
+        if not virtual_machines or not virtual_machines.get('virtualmachine'):
             return []
         return virtual_machines['virtualmachine']
 
@@ -189,6 +201,11 @@ class CloudstackService(object):
         projects = self.cloudstack_client.\
             listProjects({'listall': 'true', 'simple': 'true'})
         return projects['project']
+
+    def list_accounts(self):
+        accounts = self.cloudstack_client.\
+            listAccounts({'listall': 'true', 'simple': 'true'})
+        return accounts['account']
 
     def get_zone_by_name(self, name):
         zones = self.cloudstack_client.listZones({'keyword': name})
