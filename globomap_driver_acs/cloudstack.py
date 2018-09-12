@@ -156,6 +156,14 @@ class CloudstackService(object):
     def __init__(self, cloudstack_client):
         self.cloudstack_client = cloudstack_client
 
+    def get_router(self, id):
+        routers = self.cloudstack_client.\
+            listRouters({'id': id, 'listall': 'true'})
+        if not routers:
+            return None
+        if routers.get('count') == 1:
+            return routers['router'][0]
+
     def get_virtual_machine(self, id):
         virtual_machines = self.cloudstack_client.\
             listVirtualMachines({'id': id, 'listall': 'true'})
