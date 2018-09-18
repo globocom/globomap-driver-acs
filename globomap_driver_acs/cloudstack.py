@@ -118,8 +118,7 @@ class CloudStackClient(SignedAPICall):
                             return None
                         else:
                             logger.exception('Erro get informations in ACS')
-                            raise Exception(
-                                err.msg) from urllib.request.HTTPError
+                            raise Exception(err.msg)
                 else:
                     data = self._http_post(self.value, self.query)
                 break
