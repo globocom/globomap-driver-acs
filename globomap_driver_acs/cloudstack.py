@@ -113,8 +113,8 @@ class CloudStackClient(SignedAPICall):
                     try:
                         data = self._http_get(self.value)
                     except urllib.request.HTTPError as err:
-                        if err.status in (404, 431):
-                            logger.exception('Erro get informations in ACS')
+                        if err.status in (404, 431, 530):
+                            logger.warning('Erro get informations in ACS')
                             return None
                         else:
                             logger.exception('Erro get informations in ACS')
