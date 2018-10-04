@@ -28,10 +28,14 @@ compile: clean
 	@python -tt -m compileall .
 	@pycodestyle --format=pylint --statistics globomap_driver_acs setup.py
 
-tests: clean compile
-	@python -m unittest discover -s tests/
+tests: clean ## Make tests
+	@nosetests --verbose --rednose  --nocapture --cover-package=globomap_driver_acs --with-coverage; coverage report -m
 
-setup: requirements.txt
+tests_ci: clean ## Make tests to CI
+	@nosetests --verbose --rednose  --nocapture --cover-package=globomap_driver_acs
+
+
+setup: requirements_test.txt
 	$(PIP) install -r $^
 
 install:

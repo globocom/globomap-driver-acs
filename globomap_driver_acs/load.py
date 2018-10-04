@@ -54,12 +54,10 @@ class CloudstackDataLoader(object):
         acs_service = self._get_cloudstack_service()
         self._process_accounts(acs_service)
         self._process_projects(acs_service)
-
         self._clear_not_updated_elements(start_time)
         logger.info('Processing finished')
 
     def _process_projects(self, acs_service):
-
         projects = acs_service.list_projects()
         logger.info('%s projects found. Processing:' % len(projects))
         for project in projects:

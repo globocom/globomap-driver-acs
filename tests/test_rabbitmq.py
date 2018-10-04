@@ -14,7 +14,9 @@
    limitations under the License.
 """
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 from globomap_driver_acs.rabbitmq import RabbitMQClient
 
 
@@ -27,7 +29,7 @@ class TestRabbitMQClient(unittest.TestCase):
         self.pika_mock = self._mock_pika()
 
     def test_get_message(self):
-        msg = '{"action": "CREATE", "type": "comp_unit", "element": {}}'
+        msg = b'{"action": "CREATE", "type": "comp_unit", "element": {}}'
 
         self.pika_mock.basic_get.return_value = (MagicMock(), None, msg)
         rabbitmq = RabbitMQClient('', '', '', '', '', 'queue_name')

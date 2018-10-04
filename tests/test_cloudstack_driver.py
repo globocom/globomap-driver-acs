@@ -240,7 +240,7 @@ class TestCloudstackDriver(unittest.TestCase):
                 self.assertEqual('collections', update['type'])
                 self.assertEqual(
                     'globomap_3018bdf1-4843-43b3-bdcf-ba1beb63c930', update['key'])
-            elif update['action'] == 'PATCH' and update['collection'] == 'zone':
+            elif update['action'] == 'UPDATE' and update['collection'] == 'zone':
                 self.assertEqual('collections', update['type'])
                 self.assertEqual(
                     'globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', update['key'])
@@ -255,7 +255,7 @@ class TestCloudstackDriver(unittest.TestCase):
                 self.assertEqual('edges', update['type'])
                 self.assertEqual(
                     'globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', update['key'])
-            elif update['action'] == 'PATCH' and update['collection'] == 'region':
+            elif update['action'] == 'UPDATE' and update['collection'] == 'region':
                 self.assertEqual('collections', update['type'])
                 self.assertEqual('globomap_ENV', update['key'])
             elif update['action'] == 'UPDATE' and update['collection'] == 'custeio_process_comp_unit':
@@ -611,7 +611,7 @@ class TestCloudstackDriver(unittest.TestCase):
             updates, {'id': '123', 'properties': {'zone': 'zone_a'}}, 'hostname')
 
         self.assertEqual(3, len(updates))
-        self.assertEqual('PATCH', updates[0]['action'])
+        self.assertEqual('UPDATE', updates[0]['action'])
         self.assertEqual(
             'globomap_35ae56ee-273a-46da-8422-fe2b3490c76a', updates[0]['key'])
         self.assertEqual('zone', updates[0]['collection'])
@@ -657,7 +657,7 @@ class TestCloudstackDriver(unittest.TestCase):
         handler.create_region_update(updates)
 
         self.assertEqual(1, len(updates))
-        self.assertEqual('PATCH', updates[0]['action'])
+        self.assertEqual('UPDATE', updates[0]['action'])
         self.assertEqual('globomap_ENV', updates[0]['key'])
         self.assertEqual('region', updates[0]['collection'])
         self.assertEqual('ENV', updates[0]['element']['id'])

@@ -199,7 +199,7 @@ class CloudstackService(object):
         if id:
             projects = self.cloudstack_client.\
                 listProjects({'id': id, 'listall': 'true'})
-            if projects.get('count') == 1:
+            if projects and projects.get('count') == 1:
                 return projects['project'][0]
             else:
                 return dict()
