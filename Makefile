@@ -3,6 +3,8 @@
 # Version package
 VERSION=$(shell python -c 'import globomap_driver_acs; print(globomap_driver_acs.__version__)')
 
+PROJECT_HOME = "`pwd`"
+
 # Pip executable path
 PIP := $(shell which pip)
 
@@ -35,8 +37,8 @@ tests_ci: clean ## Make tests to CI
 	@nosetests --verbose --rednose  --nocapture --cover-package=globomap_driver_acs
 
 
-setup: requirements_test.txt
-	$(PIP) install -r $^
+setup: ## Install project dependencies
+	@pip install -r $(PROJECT_HOME)/requirements_test.txt
 
 install:
 	@python setup.py install
