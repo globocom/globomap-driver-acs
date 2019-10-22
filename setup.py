@@ -28,7 +28,7 @@ setup(
         'globomap-loader-api-client==0.0.7',
         'pika==0.10.0',
         'python-dateutil==2.4.2',
-        'requests==2.10.0',
+        'requests==2.20.0',
     ],
     url='https://github.com/globocom/globomap-driver-acs',
     packages=['globomap_driver_acs'],
